@@ -7,6 +7,8 @@ const Homepage = () => {
     <div className='bg-[#1A1A2E] py-8 px-12'>
         <Hero/>
         <Cardlist/>
+        <Cardlist/>
+        <Cardlist/>
         <Footer/>
     </div>
   )

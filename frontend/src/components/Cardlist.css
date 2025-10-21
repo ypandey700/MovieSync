@@ -1,0 +1,44 @@
+.nav-rail {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 96px;
+  width: 36px;
+  border-radius: 9999px;
+  background: #0b0b14;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  z-index: 10;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-rail.hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.nav-rail.prev {
+  left: -22px;
+}
+.nav-rail.next {
+  right: -22px;
+}
+
+.nav-rail:hover {
+  background: #1a1a2e;
+}
+
+.nav-rail svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 768px) {
+  .nav-rail {
+    display: none;
+  }
+}
