@@ -1,8 +1,11 @@
 import React from "react";
+import Navabar from "./components/Navabar";
 function App()
 {
   return(
-    <h1 className="bg-red-500">MovieSync</h1>
+    <div>
+      <Navabar/>
+    </div>
   )
 }
 export default App;
