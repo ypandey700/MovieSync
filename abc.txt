@@ -1,0 +1,7 @@
+bg - blue-black - 0B0B14
+purple -9D4EDD
+neon -3EECAC
+
+grey text - B8B8C7
+
+bluesish  -1A1A2E
