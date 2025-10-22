@@ -1,12 +1,15 @@
 import React from 'react'
+import { Link } from "react-router";
 
 const Navbar = () => {
   return (
     <nav className="p-5 text-[15px] font-medium bg-[#0B0B14] text-[#B8B8C7] h-20 flex justify-between items-center shadow-lg shadow-[#9D4EDD]/20">
+       <Link to={"/"}>
       <h1 className="text-4xl font-bold cursor-pointer tracking-tight select-none">
         <span className="text-[#9D4EDD]">Movie</span>
         <span className="text-[#3EECAC] brightness-125">Sync</span>
       </h1>
+      </Link>
 
       <ul className="hidden md:flex space-x-6">
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Home</li>

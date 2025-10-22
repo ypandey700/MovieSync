@@ -1,23 +1,21 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import './Cardlist.css'
 import banner2 from '../assets/img-banner.jpg'
+import  {Link} from "react-router"
+const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN //use api key
 
-const data = [
-  { id: 1, title: 'Card 1', description: 'Description for Card 1' },
-  { id: 2, title: 'Card 2', description: 'Description for Card 2' },
-  { id: 3, title: 'Card 3', description: 'Description for Card 3' },
-  { id: 4, title: 'Card 4', description: 'Description for Card 4' },
-  { id: 5, title: 'Card 5', description: 'Description for Card 5' },
-  { id: 6, title: 'Card 6', description: 'Description for Card 6' },
-  { id: 7, title: 'Card 7', description: 'Description for Card 7' },
-  { id: 8, title: 'Card 8', description: 'Description for Card 8' },
-]
 
-const Cardlist = () => {
+
+const Cardlist = ({title,category}) => {
+  console.log(title)
+
+const [data, setData] = useState([]);
+
+
   const prevRef = useRef(null)
   const nextRef = useRef(null)
   const [atStart, setAtStart] = useState(true)
@@ -29,9 +27,25 @@ const Cardlist = () => {
     setAtEnd(swiper.isEnd)
   }
 
+  const options = {
+  method: 'GET',
+  headers: {
+    accept: 'application/json',
+     Authorization: `Bearer ${TMDB_TOKEN}`,
+  }
+};
+useEffect(()=>{
+  fetch( `https://api.themoviedb.org/3/movie/${category}?language=en-US&page=1`, options)
+  .then(res => res.json())
+  .then(res => setData(res.results))
+  .catch(err => console.error(err));
+},[])
+
+
+
   return (
     <div className="text-white mt-8">
-      <h2 className="text-3xl font-medium mb-6">All Content (Explore)</h2>
+      <h2 className="text-3xl font-medium mb-6">{title}</h2>
 
       <div className="relative overflow-visible">
         {/* external navigation */}
@@ -92,14 +106,16 @@ const Cardlist = () => {
           {data.map((item) => (
             <SwiperSlide key={item.id}>
               <div className="cursor-pointer">
+                 <Link to={`/movie/${item.id}`}>
                 <img
-                  className="h-72 w-full object-cover rounded-lg transition-transform duration-300 hover:scale-105"
-                  src={banner2}
+                  className="h-88 w-full  object-top object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+                  src={`https://image.tmdb.org/t/p/w500/${item.poster_path}`}
                   alt={item.title}
                 />
                 <p className="pt-3 text-center font-semibold text-[18px] text-gray-300">
-                  {item.description}
+                  {item.original_title}
                 </p>
+                </Link>
               </div>
             </SwiperSlide>
           ))}
