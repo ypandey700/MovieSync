@@ -12,7 +12,9 @@ const Navbar = () => {
       </Link>
 
       <ul className="hidden md:flex space-x-6">
+        <Link to={"/"}>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Home</li>
+        </Link>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Suggestion</li>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Connect</li>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Watch Party</li>
@@ -31,9 +33,11 @@ const Navbar = () => {
         <button className="bg-gradient-to-r from-[#9D4EDD] to-[#3EECAC] text-[#0B0B14] px-5 py-2 rounded font-semibold hover:scale-105 transition-transform duration-200">
           Get AI Picks
         </button>
+          <Link to={"/signin"}>
         <button className="border border-[#3EECAC]/50 text-white px-4 py-2 rounded hover:bg-[#3EECAC] hover:text-[#0B0B14] transition">
           Sign In
         </button>
+        </Link>
       </div>
     </nav>
   )
