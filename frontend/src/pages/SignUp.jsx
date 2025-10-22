@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 import banner from "../assets/background_banner.jpg";
 
-const SignIn = () => {
+const SignUp = () => {
   const navigate = useNavigate();
 
   return (

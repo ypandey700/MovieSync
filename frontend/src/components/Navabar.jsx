@@ -17,7 +17,9 @@ const Navbar = () => {
         </Link>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Suggestion</li>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Connect</li>
+        <Link to={'/watchparty'}>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Watch Party</li>
+        </Link>
         <li className="cursor-pointer hover:text-[#9D4EDD] transition-colors">Momentz</li>
       </ul>
 
