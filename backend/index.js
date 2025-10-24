@@ -1,6 +1,10 @@
 import express from  "express"
 import mongoose  from "mongoose"
 import userRouter from "./routes/userRouter.js"
+import dotenv from "dotenv";
+
+
+dotenv.config(); 
 
 const app = express();
 
