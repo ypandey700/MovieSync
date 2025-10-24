@@ -30,4 +30,4 @@ const userSchema = new mongoose.Schema({
   friendRequests: [String], // userIds of pending requests
 });
 
-
+export default  mongoose.model("user", userSchema)
