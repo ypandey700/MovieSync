@@ -23,10 +23,11 @@ const SignUp = () => {
       const res = await fetch(`${BACKEND_URL}/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ name:username, email, password }),
       });
 
       const data = await res.json();
+      console.log(data)
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
       localStorage.setItem("user", JSON.stringify(data.user));

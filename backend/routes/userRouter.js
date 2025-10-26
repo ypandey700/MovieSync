@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/register', async (req, res) => {
   console.log('Register endpoint hit', req.body);
-  console.log("reques body : ",req.body)
+  console.log("request body : ",req.body)
   try {
   const { name, email, password } = req.body;
     if (!email || !name || !password) {
@@ -47,11 +47,10 @@ router.post('/login', async (req, res) => {
     
     const token = jwt.sign({ userId: user.userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
     
-    
     res.cookie("token",token, {
       httpOnly:true,
       secure:process.env.NODE_ENV=="production"
-    }).status(300).json({
+    }).status(200).json({
       user: {
         userId: user._id,
         email: user.email, 

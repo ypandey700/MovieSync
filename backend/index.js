@@ -19,12 +19,16 @@ app.use(express.json())
 
 
 
-app.use("/api/user",userRouter)
-app.use("/api/party", party)
+app.get('/test',(req,res)=>{
+  res.json({message: "ok"}); 
+})
+
 
 
 
 const server = http.createServer(app); 
+app.use("/api/users",userRouter)
+app.use("/api/party", party)
 
 const io = new Server(server, {
   cors: {

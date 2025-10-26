@@ -2,6 +2,11 @@ import React from 'react'
 import { Link } from "react-router";
 
 const Navbar = () => {
+
+  const Userdata = localStorage.getItem('user'); 
+  const user = JSON.parse(Userdata)
+  
+  
   return (
     <nav className="p-5 text-[15px] font-medium bg-[#0B0B14] text-[#B8B8C7] h-20 flex justify-between items-center shadow-lg shadow-[#9D4EDD]/20">
        <Link to={"/"}>
@@ -35,11 +40,11 @@ const Navbar = () => {
         <button className="bg-gradient-to-r from-[#9D4EDD] to-[#3EECAC] text-[#0B0B14] px-5 py-2 rounded font-semibold hover:scale-105 transition-transform duration-200">
           Get AI Picks
         </button>
-          <Link to={"/signin"}>
-        <button className="border border-[#3EECAC]/50 text-white px-4 py-2 rounded hover:bg-[#3EECAC] hover:text-[#0B0B14] transition">
+          
+        {!user ?<Link to={"/signin"}> <button className="border border-[#3EECAC]/50 text-white px-4 py-2 rounded hover:bg-[#3EECAC] hover:text-[#0B0B14] transition">
           Sign In
-        </button>
-        </Link>
+        </button></Link>: <h1 className="border border-[#3EECAC]/50 text-white px-4 py-2 rounded-full hover:bg-[#3EECAC] hover:text-[#0B0B14] transition">{user.name[0].toUpperCase()}</h1>}
+        
       </div>
     </nav>
   )

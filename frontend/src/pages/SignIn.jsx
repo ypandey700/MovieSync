@@ -5,7 +5,7 @@ import { BACKEND_URL } from "../lib/confg";
 
 const SignIn = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ const SignIn = () => {
       const res = await fetch(`${BACKEND_URL}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -54,10 +54,10 @@ const SignIn = () => {
 
         <form className="flex flex-col space-y-4 text-left" onSubmit={handleSignIn}>
           <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full h-[50px] bg-[#333] text-white rounded px-5 text-base 
                        focus:outline-none focus:ring-2 focus:ring-[#9D4EDD] placeholder-gray-400"
           />
