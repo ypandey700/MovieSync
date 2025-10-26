@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 
 const chatMessageSchema = new mongoose.Schema({
-  id: String,
   userId: String,
   userName: String,
   userAvatar: String,
@@ -11,12 +10,11 @@ const chatMessageSchema = new mongoose.Schema({
 
 const participantSchema = new mongoose.Schema({
   userId: String,
-  displayName: String,
+  name: String,
   avatarUrl: String,
 }, { _id: false });
 
 const watchPartySchema = new mongoose.Schema({
-  sessionId: { type: String, required: true, unique: true },
   hostId: { type: String, required: true },
   participants: [participantSchema],
   contentId: { type: String },
