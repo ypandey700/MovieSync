@@ -19,8 +19,8 @@ app.use(express.json())
 
 
 
-app.use("/user",userRouter)
-app.use("/party", party)
+app.use("/api/user",userRouter)
+app.use("/api/party", party)
 
 
 

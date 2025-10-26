@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 
 const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN;
 
+
 const Moviepage = () => {
   const { id } = useParams();
   const [movie, setMovie] = useState(null);
@@ -130,7 +131,7 @@ const Moviepage = () => {
               <Link to={`/watchparty/${movie.id}`}>
               <button className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#9D4EDD] to-[#7E22CE] px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-110 active:scale-95 transition-all duration-200 min-w-[160px]">
                 <i className="ri-group-2-line text-lg"></i>
-                <span>Create Watch Party</span>
+                <button>Create Watch Party</button>
               </button>
               </Link>
             </div>
