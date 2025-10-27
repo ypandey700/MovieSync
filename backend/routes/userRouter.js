@@ -71,4 +71,14 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/logout', async (req, res)=> {
+    res.cookie("token","",{
+      httpOnly: true ,
+      secure: process.env.NODE_ENV=="production", 
+      expires: new Date(0)
+    })
+
+    res.status(200).json({message: "User logged out "})
+})
+
 export default router; 
