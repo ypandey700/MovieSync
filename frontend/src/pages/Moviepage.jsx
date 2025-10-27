@@ -1,12 +1,13 @@
 import { Play } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useNavigate } from "react-router";
+import { BACKEND_URL } from "../lib/confg";
 
 const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN;
 
-
 const Moviepage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [movie, setMovie] = useState(null);
   const [trailerKey, setTrailerKey] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
@@ -23,29 +24,20 @@ const Moviepage = () => {
     const controller = new AbortController();
     const { signal } = controller;
 
-    // Fetch movie details
     fetch(`https://api.themoviedb.org/3/movie/${id}?language=en-US`, {
       ...options,
       signal,
     })
       .then((res) => res.json())
-      .then((res) => setMovie(res))
-      .catch((err) => {
-        if (err.name !== "AbortError") console.error(err);
-      });
+      .then((res) => setMovie(res));
 
-    // Fetch recommendations
     fetch(
       `https://api.themoviedb.org/3/movie/${id}/recommendations?language=en-US&page=1`,
       { ...options, signal }
     )
       .then((res) => res.json())
-      .then((res) => setRecommendations(res.results || []))
-      .catch((err) => {
-        if (err.name !== "AbortError") console.error(err);
-      });
+      .then((res) => setRecommendations(res.results || []));
 
-    // Fetch trailer
     fetch(
       `https://api.themoviedb.org/3/movie/${id}/videos?language=en-US`,
       { ...options, signal }
@@ -56,13 +48,34 @@ const Moviepage = () => {
           (vid) => vid.site === "YouTube" && vid.type === "Trailer"
         );
         setTrailerKey(trailer?.key || null);
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") console.error(err);
       });
 
     return () => controller.abort();
   }, [id]);
+
+  const data = localStorage.getItem('user')
+  const user = JSON.parse(data); 
+
+  const createWatchParty = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/party/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.userId,
+          contentId: id,
+          content: movie,
+        }),
+      });
+      const data = await res.json();
+      console.log(data); 
+      if (res.ok) navigate(`/watchparty/${data.watchParty.joinCode}`);
+      else alert(data.message || "Failed to create watch party");
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    }
+  };
 
   if (!movie) {
     return (
@@ -74,7 +87,6 @@ const Moviepage = () => {
 
   return (
     <div className="min-h-screen bg-[#181818] text-white">
-      {/* --- Header section --- */}
       <div
         className="relative h-[60vh] flex items-end"
         style={{
@@ -98,24 +110,22 @@ const Moviepage = () => {
             <div className="flex items-center gap-4 mb-3 text-gray-300 text-sm">
               <span>⭐ {movie.vote_average?.toFixed(1)}</span>
               <span>{movie.release_date}</span>
-              <span>{movie.runtime} min</span>
+              <span>{movie.runtime} min</span>
             </div>
 
             <div className="flex flex-wrap gap-2 mb-4">
-              {movie.genres?.length > 0 &&
-                movie.genres.map((genre) => (
-                  <span
-                    key={genre.id}
-                    className="bg-gray-800 px-3 py-1 rounded-full text-sm"
-                  >
-                    {genre.name}
-                  </span>
-                ))}
+              {movie.genres?.map((genre) => (
+                <span
+                  key={genre.id}
+                  className="bg-gray-800 px-3 py-1 rounded-full text-sm"
+                >
+                  {genre.name}
+                </span>
+              ))}
             </div>
 
             <p className="max-w-2xl text-gray-200 mb-6">{movie.overview}</p>
 
-            {/* --- Unified Buttons --- */}
             <div className="flex flex-wrap items-center gap-4">
               {trailerKey && (
                 <Link
@@ -128,18 +138,19 @@ const Moviepage = () => {
                   </button>
                 </Link>
               )}
-              <Link to={`/watchparty/${movie.id}`}>
-              <button className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#9D4EDD] to-[#7E22CE] px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-110 active:scale-95 transition-all duration-200 min-w-[160px]">
+
+              <button
+                onClick={createWatchParty}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#9D4EDD] to-[#7E22CE] px-6 py-2.5 text-sm font-medium text-white shadow-md hover:brightness-110 active:scale-95 transition-all duration-200 min-w-[160px]"
+              >
                 <i className="ri-group-2-line text-lg"></i>
-                <button>Create Watch Party</button>
+                <span>Create Watch Party</span>
               </button>
-              </Link>
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- Details Section --- */}
       <div className="p-8">
         <h2 className="text-2xl font-semibold mb-4">Details</h2>
         <div className="bg-[#232323] rounded-lg shadow-lg p-6 flex flex-col md:flex-row gap-8">
@@ -149,21 +160,18 @@ const Moviepage = () => {
                 <span className="font-semibold text-white">Status:</span>
                 <span className="ml-2">{movie.status}</span>
               </li>
-
               <li>
-                <span className="font-semibold text-white">Release Date:</span>
+                <span className="font-semibold text-white">Release Date:</span>
                 <span className="ml-2">{movie.release_date}</span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">
-                  Original Language:
+                  Original Language:
                 </span>
                 <span className="ml-2">
                   {movie.original_language?.toUpperCase()}
                 </span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">Budget:</span>
                 <span className="ml-2">
@@ -172,7 +180,6 @@ const Moviepage = () => {
                     : "N/A"}
                 </span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">Revenue:</span>
                 <span className="ml-2">
@@ -181,10 +188,9 @@ const Moviepage = () => {
                     : "N/A"}
                 </span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">
-                  Production Companies:
+                  Production Companies:
                 </span>
                 <span className="ml-2">
                   {movie.production_companies?.length
@@ -192,7 +198,6 @@ const Moviepage = () => {
                     : "N/A"}
                 </span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">Countries:</span>
                 <span className="ml-2">
@@ -201,10 +206,9 @@ const Moviepage = () => {
                     : "N/A"}
                 </span>
               </li>
-
               <li>
                 <span className="font-semibold text-white">
-                  Spoken Languages:
+                  Spoken Languages:
                 </span>
                 <span className="ml-2">
                   {movie.spoken_languages?.length
@@ -222,15 +226,11 @@ const Moviepage = () => {
             <p className="italic text-gray-400 mb-6">
               {movie.tagline || "No tagline available."}
             </p>
-
             <h3 className="font-semibold text-white mb-2">Overview</h3>
             <p className="text-gray-200">{movie.overview}</p>
           </div>
         </div>
       </div>
-
-     
-      
     </div>
   );
 };

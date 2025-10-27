@@ -14,9 +14,10 @@ function generateJoinCode() {
 }
 
 router.post("/create", async (req, res) => {
+  console.log("Create Party end point hit"); 
   try {
     const { userId, contentId, content } = req.body;
-
+    console.log(`user id: ${userId} and contentId : ${contentId}`)
     if (!userId || !contentId) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -51,9 +52,12 @@ router.post("/create", async (req, res) => {
 });
 
 router.post("/join/:joincode", async (req, res) => {
+  console.log("Join room end point hit")
   try {
     const { joincode } = req.params;
     const { userId } = req.body;
+
+    console.log(`user id : ${userId} join code : ${joincode}`); 
 
     const user = await User.findById(userId);
     if (!user) {
