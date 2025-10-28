@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Play, Pause, Volume2, Maximize2, Copy, LogOut } from "lucide-react";
+import { useParams, useNavigate } from "react-router";
+import { Play, Pause, Volume2, VolumeX, Maximize2, Copy, LogOut } from "lucide-react";
 import { socket } from "../lib/socket";
 import sampleVideo from "../assets/sample.mp4";
 
@@ -20,14 +20,15 @@ const PartyRoom = () => {
 
   const [message, setMessage] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const videoRef = useRef();
   const chatEndRef = useRef();
 
-const user = useMemo(
-  () => JSON.parse(localStorage.getItem("user") || "{}"),
-  []
-);
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("user") || "{}"),
+    []
+  );
   const joinCode = id;
 
   if(!user) navigate("/")
@@ -154,6 +155,13 @@ const user = useMemo(
     }
   };
 
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(!isMuted);
+    }
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(joinCode);
     setCopied(true);
@@ -232,13 +240,17 @@ const user = useMemo(
                 />
               </div>
 
-              <button className="text-white hover:text-[#9D4EDD]" title="Volume">
-                <Volume2 size={24} />
+              <button 
+                onClick={toggleMute}
+                className="text-white hover:text-[#9D4EDD] transition" 
+                title={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
               </button>
 
               <button
                 onClick={toggleFullscreen}
-                className="text-white hover:text-[#9D4EDD]"
+                className="text-white hover:text-[#9D4EDD] transition"
                 title="Fullscreen"
               >
                 <Maximize2 size={24} />

@@ -7,7 +7,9 @@ const Navbar = () => {
   const navigate = useNavigate(); 
   
   const Userdata = localStorage.getItem('user'); 
+  
   const user = JSON.parse(Userdata)
+
   
   const HandleLogout = async ()=> {
     localStorage.clear(); 
