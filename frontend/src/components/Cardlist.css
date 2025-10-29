@@ -5,14 +5,38 @@
   height: 96px;
   width: 36px;
   border-radius: 9999px;
-  background: #0b0b14;
   color: #ffffff;
   display: grid;
   place-items: center;
   z-index: 10;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  transition: background 0.2s ease, opacity 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Orange buttons (for Popular & Now Playing) */
+.nav-rail-orange {
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.nav-rail-orange:hover {
+  background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+  box-shadow: 0 6px 25px rgba(249, 115, 22, 0.6);
+  transform: translateY(-50%) scale(1.08);
+}
+
+/* Cyan buttons (for Top Rated) */
+.nav-rail-cyan {
+  background: linear-gradient(135deg, #0891b2 0%, #22d3ee 100%);
+  box-shadow: 0 4px 15px rgba(34, 211, 238, 0.3);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+
+.nav-rail-cyan:hover {
+  background: linear-gradient(135deg, #22d3ee 0%, #67e8f9 100%);
+  box-shadow: 0 6px 25px rgba(34, 211, 238, 0.6);
+  transform: translateY(-50%) scale(1.08);
 }
 
 .nav-rail.hidden {
@@ -24,17 +48,35 @@
 .nav-rail.prev {
   left: -22px;
 }
+
 .nav-rail.next {
   right: -22px;
-}
-
-.nav-rail:hover {
-  background: #1a1a2e;
+  animation: slideHint 2s ease-in-out infinite;
 }
 
 .nav-rail svg {
   width: 18px;
   height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.nav-rail:hover svg {
+  transform: scale(1.2);
+}
+
+/* Next button pulse animation */
+@keyframes slideHint {
+  0%, 100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) translateX(5px);
+  }
+}
+
+/* Hover removes animation */
+.nav-rail.next:hover {
+  animation: none;
 }
 
 @media (max-width: 768px) {

@@ -11,6 +11,7 @@ const Hero = () => {
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [trailerKey, setTrailerKey] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const options = {
     method: "GET",
@@ -86,15 +87,18 @@ const Hero = () => {
   // --- 3️⃣ render states ---
   if (loading) {
     return (
-      <div className="relative w-[1200px] h-[500px] mx-auto overflow-hidden rounded-xl bg-slate-800/60 flex items-center justify-center text-white/80">
-        Loading...
+      <div className="relative w-[1200px] h-[500px] mx-auto overflow-hidden rounded-xl bg-slate-800/60 border border-orange-500/20 flex items-center justify-center text-white/80">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></div>
+          <span>Loading...</span>
+        </div>
       </div>
     );
   }
 
   if (!movie) {
     return (
-      <div className="relative w-[1200px] h-[500px] mx-auto overflow-hidden rounded-xl bg-slate-800/60 flex items-center justify-center text-white/80">
+      <div className="relative w-[1200px] h-[500px] mx-auto overflow-hidden rounded-xl bg-slate-800/60 border border-orange-500/20 flex items-center justify-center text-white/80">
         No movie found.
       </div>
     );
@@ -104,42 +108,106 @@ const Hero = () => {
     ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
     : banner;
 
+  // Extract year from release_date
+  const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+  
+  // Get genres (limit to first 2)
+  const genres = movie.genres?.slice(0, 2).map(g => g.name).join(', ') || 'N/A';
+  
+  // Get rating
+  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+
+  // Truncate overview to ~150 characters
+  const shortOverview = movie.overview 
+    ? movie.overview.length > 200 
+      ? movie.overview.substring(0, 200) + '...' 
+      : movie.overview
+    : "No description available.";
+
   // --- 4️⃣ final UI ---
   return (
-    <div className="relative w-[1400px] h-[500px] mx-auto overflow-hidden rounded-xl">
+    <div 
+      className="relative w-[1400px] h-[500px] mx-auto overflow-hidden rounded-xl border-2 border-orange-500/20 shadow-xl shadow-orange-500/10 transition-all duration-500 hover:border-orange-500/50 hover:shadow-orange-500/30 group cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <img
-        className="absolute inset-0 w-full h-full object-cover object-center"
+        className={`absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ${
+          isHovered ? 'scale-110' : 'scale-100'
+        }`}
         src={imgSrc}
         alt={movie.title || "banner"}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-transparent" />
+      
+      {/* Gradient Overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent transition-all duration-500 ${
+        isHovered ? 'from-black/95 via-black/70' : ''
+      }`} />
 
-      <div className="relative h-full px-8 lg:px-12 pb-10 pt-8 flex flex-col justify-end max-w-[65%]">
-        <h1 className="text-white text-5xl md:text-6xl font-extrabold leading-tight drop-shadow">
+      {/* Animated Corner Accent */}
+      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-orange-500/20 to-transparent rounded-bl-full transition-all duration-500 group-hover:w-60 group-hover:h-60"></div>
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-cyan-400/20 to-transparent rounded-tr-full transition-all duration-500 group-hover:w-48 group-hover:h-48"></div>
+
+      <div className="relative h-full px-8 lg:px-12 pb-10 pt-8 flex flex-col justify-end max-w-[55%]">
+        
+        {/* Title */}
+        <h1 className={`text-white text-4xl md:text-5xl font-extrabold leading-tight drop-shadow-lg transition-all duration-500 ${
+          isHovered ? 'scale-105 text-orange-400' : ''
+        }`}>
           {movie.title || movie.original_title}
         </h1>
 
-        <p className="mt-4 text-white/90 leading-relaxed max-w-2xl">
-          {movie.overview || "No description available."}
+        {/* Meta Info: Year | Genre | Rating */}
+        <div className={`mt-3 flex items-center gap-3 text-white/90 text-sm transition-all duration-500 ${
+          isHovered ? 'gap-4 text-base' : ''
+        }`}>
+          <span className="font-semibold bg-slate-800/50 px-3 py-1 rounded-full backdrop-blur-sm">{year}</span>
+          <span className="text-orange-500">|</span>
+          <span className="bg-slate-800/50 px-3 py-1 rounded-full backdrop-blur-sm">{genres}</span>
+          <span className="text-orange-500">|</span>
+          <span className="flex items-center gap-1 bg-slate-800/50 px-3 py-1 rounded-full backdrop-blur-sm">
+            <i className="ri-star-fill text-yellow-400"></i>
+            {rating}
+          </span>
+        </div>
+
+        {/* Short Description */}
+        <p className={`mt-3 text-white/80 leading-relaxed text-sm max-w-xl transition-all duration-500 ${
+          isHovered ? 'text-white/90 text-base' : ''
+        }`}>
+          {shortOverview}
         </p>
 
-        <div className="mt-6 flex items-center space-x-8">
+        {/* Buttons */}
+        <div className={`mt-5 flex items-center gap-4 transition-all duration-500 ${
+          isHovered ? 'gap-5 scale-105' : ''
+        }`}>
           {trailerKey && (
             <Link
               to={`https://www.youtube.com/watch?v=${trailerKey}`}
               target="_blank"
             >
-              <button className="cursor-pointer px-5 py-2 bg-[#9D4EDD] text-[#ffffff] rounded font-[500] hover:scale-105 transition-transform duration-200">
-                <i className="ri-play-large-line"></i> Watch
+              <button className="group/btn cursor-pointer px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white rounded-lg font-semibold hover:scale-110 transition-all duration-300 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/60 flex items-center gap-2">
+                <i className="ri-play-large-fill group-hover/btn:scale-125 transition-transform duration-300"></i>
+                <span>Watch</span>
               </button>
             </Link>
           )}
           <Link to={`/movie/${movie.id}`}>
-            <button className="cursor-pointer px-5 py-2 bg-[#475569] text-[#ffffff] rounded font-[500] hover:scale-105 transition-transform duration-200">
-              <i className="ri-information-line"></i> More Info
+            <button className="group/btn cursor-pointer px-6 py-2.5 bg-slate-800/80 backdrop-blur-sm border-2 border-cyan-400/40 hover:border-cyan-400/80 hover:bg-slate-700/80 text-white rounded-lg font-semibold hover:scale-110 transition-all duration-300 flex items-center gap-2">
+              <i className="ri-information-line group-hover/btn:scale-125 transition-transform duration-300"></i>
+              <span>More Info</span>
             </button>
           </Link>
         </div>
+
+        {/* Hover Indicator */}
+        {isHovered && (
+          <div className="mt-6 flex items-center gap-2 text-orange-400 text-sm font-semibold animate-pulse">
+            <i className="ri-arrow-right-line"></i>
+            <span>Click for more details</span>
+          </div>
+        )}
       </div>
     </div>
   );

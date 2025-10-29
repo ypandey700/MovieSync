@@ -41,6 +41,8 @@ useEffect(()=>{
   .catch(err => console.error(err));
 },[])
 
+  // Determine button color based on category
+  const buttonClass = category === 'top_rated' ? 'nav-rail-cyan' : 'nav-rail-orange';
 
 
   return (
@@ -51,7 +53,7 @@ useEffect(()=>{
         {/* external navigation */}
         <button
           ref={prevRef}
-          className={`nav-rail prev ${atStart ? 'hidden' : ''}`}
+          className={`nav-rail ${buttonClass} prev ${atStart ? 'hidden' : ''}`}
           aria-label="Previous"
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -67,7 +69,7 @@ useEffect(()=>{
 
         <button
           ref={nextRef}
-          className={`nav-rail next ${atEnd ? 'hidden' : ''}`}
+          className={`nav-rail ${buttonClass} next ${atEnd ? 'hidden' : ''}`}
           aria-label="Next"
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -93,32 +95,69 @@ useEffect(()=>{
             swiper.params.navigation.nextEl = nextRef.current
           }}
           onSlideChange={handleSlideChange}
-          spaceBetween={20}
-          slidesPerView={4}
+          spaceBetween={16}
+          slidesPerView={5}
           grabCursor
           className="px-10"
           breakpoints={{
-            320: { slidesPerView: 1 },
-            640: { slidesPerView: 2 },
-            1024: { slidesPerView: 4 },
+            320: { slidesPerView: 2 },
+            640: { slidesPerView: 3 },
+            1024: { slidesPerView: 5 },
           }}
         >
-          {data.map((item) => (
-            <SwiperSlide key={item.id}>
-              <div className="cursor-pointer">
-                 <Link to={`/movie/${item.id}`}>
-                <img
-                  className="h-88 w-full  object-top object-cover rounded-lg transition-transform duration-300 hover:scale-105"
-                  src={`https://image.tmdb.org/t/p/w500/${item.poster_path}`}
-                  alt={item.title}
-                />
-                <p className="pt-3 text-center font-semibold text-[18px] text-gray-300">
-                  {item.original_title}
-                </p>
-                </Link>
-              </div>
-            </SwiperSlide>
-          ))}
+          {data.map((item) => {
+            const year = item.release_date ? item.release_date.split('-')[0] : 'N/A';
+            const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+            
+            return (
+              <SwiperSlide key={item.id}>
+                <div className="cursor-pointer group">
+                  <Link to={`/movie/${item.id}`}>
+                    <div className="relative overflow-hidden rounded-lg border-2 border-slate-700 group-hover:border-orange-500 transition-all duration-300 aspect-[2/3]">
+                      <img
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        src={`https://image.tmdb.org/t/p/w500/${item.poster_path}`}
+                        alt={item.title}
+                      />
+                      
+                      {/* Hover Overlay with Details */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                        
+                        {/* Rating Badge */}
+                        <div className="absolute top-3 right-3 bg-yellow-500 text-black font-bold text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                          <i className="ri-star-fill"></i>
+                          {rating}
+                        </div>
+                        
+                        {/* Movie Info */}
+                        <div className="space-y-2">
+                          <h3 className="text-white font-bold text-sm line-clamp-2 leading-tight">
+                            {item.original_title}
+                          </h3>
+                          
+                          <div className="flex items-center gap-2 text-xs text-slate-300">
+                            <span className="flex items-center gap-1">
+                              <i className="ri-calendar-line"></i>
+                              {year}
+                            </span>
+                            <span className="text-orange-500">•</span>
+                            <span className="flex items-center gap-1">
+                              <i className="ri-fire-fill text-orange-500"></i>
+                              {item.popularity?.toFixed(0)}
+                            </span>
+                          </div>
+                          
+                          <p className="text-slate-400 text-xs line-clamp-3 leading-relaxed">
+                            {item.overview || "No description available."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              </SwiperSlide>
+            )
+          })}
         </Swiper>
       </div>
     </div>
