@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email :{type: String, required: true}, 
+  phoneNumber : {type: Number , required: true}, 
+  otp: {type: Number, required: true}, 
   avatarUrl: { type: String },
   passwordHash: { type: String, required: true },
   preferences: {
@@ -25,8 +27,8 @@ const userSchema = new mongoose.Schema({
   created_at: { type: String },
   updated_at: { type: String },
   vibeCircleIds: [String],
-  friends: [String], // userIds of friends
-  friendRequests: [String], // userIds of pending requests
+  friends: [String], 
+  friendRequests: [String], 
 });
 
 export default  mongoose.model("user", userSchema)

@@ -174,6 +174,12 @@ const SignUp = () => {
 
       setSuccess(true);
       setTimeout(() => navigate("/"), 1500);
+      if (!res.ok) throw new Error(data.error || "Registration failed");
+
+      setSuccess(true);
+
+      navigate("/signin"); 
+      
     } catch (err) {
       setError(err.message);
     } finally {
@@ -338,7 +344,7 @@ const SignUp = () => {
           </div>
 
           {/* Send OTP Button */}
-          {!otpSent && !otpVerified && (
+          {!otpSent && !otpVerified && phoneNumber && (
             <button
               type="button"
               onClick={handleSendOTP}
