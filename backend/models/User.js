@@ -32,18 +32,10 @@ const userSchema = new mongoose.Schema({
   friendRequests: [String], 
 });
 
-const pendingUserSchema = new mongoose.Schema({
-  name: {type: String, required: true}, 
-  email: {type:String, required: true}, 
-  phoneNumber: {type:Number, required: true}, 
-  passwordHash: { type: String, required: true },
-  otp: {type:Number, required: true}, 
-  otpVerified: {type:Number, default: false}, 
-  created_at: {type: Date, default: Date.now()}, 
-})
 
 
-export default  {
-  User: userSchema, 
-  PendingUser : pendingUserSchema
-}
+
+export default   mongoose.model("User", userSchema);
+
+1
+

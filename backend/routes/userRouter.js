@@ -1,9 +1,12 @@
 import express from 'express';
-import User from '../models/User.js';
-import PendingUser from '../models/User.js'
 import bcrypt from 'bcryptjs';
+import  User  from "../models/User.js";
+import pendingUser from '../models/pendingUser.js';
 import jwt from 'jsonwebtoken';
 import { generateOtp } from '../lib/otp-generator.js';
+import twilio from "twilio";
+
+
 
 const router = express.Router();
 
@@ -15,7 +18,12 @@ router.post('/register', async (req, res) => {
     if (!email || !name || !password) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    const pending= pendingUser.findOne({email}); 
+    if(pendingUser) return res.status(401).json({message: "Verify Phone Number First "}); 
+
     const existing = await User.findOne({ email });
+    console.log("Existing User : ", existing)
     if(!existing.otpVerified) return res.status(400).json({message: "OTP not verified"})
     if (existing) return res.status(201).json({ message: 'User registered' });
 
@@ -74,7 +82,7 @@ router.post("/sendOtp",async (req,res)=>{
    const { name, email, password , phoneNumber} = req.body;
   try {
     
-    if (!email || !name || !password) {
+    if (!email || !name || !password || !phoneNumber ) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -85,7 +93,7 @@ router.post("/sendOtp",async (req,res)=>{
     const otp = generateOtp(); 
     const passwordHash = await bcrypt.hash(password, 10);
 
-   const pendingUser  = await PendingUser.findOneAndUpdate(
+   const pending_user  = await pendingUser.findOneAndUpdate(
       {email},
       
       {name, 
@@ -93,9 +101,22 @@ router.post("/sendOtp",async (req,res)=>{
       phoneNumber, 
       passwordHash, 
       otp, 
+      otpVerified:false 
       },
      {upsert: true, new:true}
   )
+   const account_sid = process.env.TWILIO_ACCOUNT_SID
+   const auth_token = process.env.TWILIO_AUTH_TOKEN
+   const twilio_phone_number = process.env.TWILIO_PHONE_NUMBER
+  console.log(twilio_phone_number)
+   const client = new twilio(account_sid, auth_token); 
+
+    await client.messages.create({
+      body: `YOur MovieSync OTP is ${otp}`,
+      from: twilio_phone_number,
+      to: phoneNumber,
+    })
+
    res.status(200).json({message: "OTP generated",otp}); 
    } catch (error) {
     res.status(500).json({message:"Internal Server Error "}); 
@@ -104,40 +125,38 @@ router.post("/sendOtp",async (req,res)=>{
 
 } )
 
-router.post("/verfiy-otp", async(req,res)=>{
+router.post("/verfiyOtp", async(req,res)=>{
 
   try {
     
 
   const {email, otp } = req.body; 
   
-  const pendingUser = await PendingUser.findOne({email}); 
+  const pending_user = await pendingUser.findOne({email}); 
 
-  if(!pendingUser) return res.status(404).json("Email not registered")
+  if(!pending_user) return res.status(404).json({message: "Email not registered"})
 
-  if(pendingUser.otp != otp) return res.status(400).json({message: "Invalid OTP"}); 
+  if(pending_user.otp != otp) return res.status(400).json({message: "Invalid OTP"}); 
 
       const user = new User({
-      name: pending.name,
-      email: pending.email,
-      passwordHash: pending.passwordHash,
-      phoneNumber: pending.phoneNumber,
+      name: pending_user.name,
+      email: pending_user.email,
+      passwordHash: pending_user.passwordHash,
+      phoneNumber: pending_user.phoneNumber,
       otp: otp, 
       otpVerified: true,
       preferences: { genres: [], platforms: [], mood_history: [] },
       viewing_history: [],
-      created_at: now,
-      updated_at: now,
       friends: [],
       friendRequests: [],
     });
 
     await user.save(); 
-    await pendingUser.deleteOne({email}); 
+    await pending_user.deleteOne({email}); 
     res.status(201).json({ message: 'OTP  Verified successfully' });
   } catch (error) {
-      console.error('Verify OTP error:', err);
-    res.status(500).json({ message: err.message });
+      console.error('Verify OTP error:', error);
+    res.status(500).json({ message: error.message });
   }
 })
 
