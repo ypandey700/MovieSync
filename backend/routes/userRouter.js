@@ -1,7 +1,9 @@
 import express from 'express';
 import User from '../models/User.js';
+import PendingUser from '../models/User.js'
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { generateOtp } from '../lib/otp-generator.js';
 
 const router = express.Router();
 
@@ -9,27 +11,13 @@ router.post('/register', async (req, res) => {
   console.log('Register endpoint hit', req.body);
   console.log("request body : ",req.body)
   try {
-  const { name, email, password } = req.body;
+  const { name, email, password , phoneNumber} = req.body;
     if (!email || !name || !password) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const existing = await User.findOne({ email });
-    if (existing) return res.status(409).json({ error: 'User already exists' });
-    const passwordHash = await bcrypt.hash(password, 10);
-    const now = new Date().toISOString();
-    const user = new User({
-      name,
-      email, 
-      passwordHash,
-      preferences: { genres: [], platforms: [], mood_history: [] },
-      viewing_history: [],
-      created_at: now,
-      updated_at: now,
-      friends: [],
-      friendRequests: [],
-    });
-    await user.save();
-    res.status(201).json({ message: 'User registered' });
+    if (existing) return res.status(201).json({ message: 'User registered' });
+    
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: err.message });
@@ -81,6 +69,73 @@ router.post('/logout', async (req, res)=> {
     res.status(200).json({message: "User logged out "})
 })
 
-// router.get("/sendOtp", )
+router.post("/sendOtp",async (req,res)=>{
+   const { name, email, password , phoneNumber} = req.body;
+  try {
+    
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(409).json({ message: "User already registered" });
+    
+    const otp = generateOtp(); 
+    const passwordHash = await bcrypt.hash(password, 10);
+
+   const pendingUser  = await PendingUser.findOneAndUpdate(
+      {email},
+      
+      {name, 
+      email,
+      phoneNumber, 
+      passwordHash, 
+      otp, 
+      },
+     {upsert: true, new:true}
+  )
+   res.status(200).json({message: "OTP generated",otp}); 
+   } catch (error) {
+    res.status(500).json({message:"Internal Server Error "}); 
+    console.log(error);  
+  }
+
+} )
+
+router.post("/verfiy-otp", async(req,res)=>{
+
+  try {
+    
+
+  const {email, otp } = req.body; 
+  
+  const pendingUser = await PendingUser.findOne({email}); 
+
+  if(!pendingUser) return res.status(404).json("Email not registered")
+
+  if(pendingUser.otp != otp) return res.status(400).json({message: "Invalid OTP"}); 
+
+      const user = new User({
+      name: pending.name,
+      email: pending.email,
+      passwordHash: pending.passwordHash,
+      phoneNumber: pending.phoneNumber,
+      preferences: { genres: [], platforms: [], mood_history: [] },
+      viewing_history: [],
+      created_at: now,
+      updated_at: now,
+      friends: [],
+      friendRequests: [],
+    });
+
+    await user.save(); 
+    await pendingUser.deleteOne({email}); 
+    res.status(201).json({ message: 'OTP  Verified successfully' });
+  } catch (error) {
+      console.error('Verify OTP error:', err);
+    res.status(500).json({ message: err.message });
+  }
+})
 
 export default router; 
