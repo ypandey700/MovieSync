@@ -7,6 +7,7 @@ import { Server } from "socket.io";
 import userRouter from "./routes/userRouter.js";
 import partyRouter from "./routes/party.js";
 import WatchParty from "./models/WatchParty.js";
+import { generateOtp } from "./lib/otp-generator.js";
 
 dotenv.config();
 
