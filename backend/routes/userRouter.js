@@ -16,8 +16,9 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     const existing = await User.findOne({ email });
+    if(!existing.otpVerified) return res.status(400).json({message: "OTP not verified"})
     if (existing) return res.status(201).json({ message: 'User registered' });
-    
+
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: err.message });
@@ -121,6 +122,8 @@ router.post("/verfiy-otp", async(req,res)=>{
       email: pending.email,
       passwordHash: pending.passwordHash,
       phoneNumber: pending.phoneNumber,
+      otp: otp, 
+      otpVerified: true,
       preferences: { genres: [], platforms: [], mood_history: [] },
       viewing_history: [],
       created_at: now,
