@@ -7,7 +7,6 @@ export const generateOtp = () => {
     
     for(let i=0; i<6; i++ ){
         const randomIdx = Math.floor(Math.random()*len);
-        console.log(nums[randomIdx])
         otp+= nums[randomIdx]; 
     }
     

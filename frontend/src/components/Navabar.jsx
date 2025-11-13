@@ -8,7 +8,11 @@ const Navbar = () => {
   const navigate = useNavigate(); 
   
   const Userdata = localStorage.getItem('user'); 
-  
+  if(!Userdata) {
+      console.log("user Data no",Userdata)
+     navigate('/signin')
+
+  }
   const user = Userdata ? JSON.parse(Userdata) : null;
 
   

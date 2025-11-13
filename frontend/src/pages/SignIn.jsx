@@ -24,7 +24,6 @@ const SignIn = () => {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("token", data.token || "authenticated");
 

@@ -64,19 +64,37 @@ const SignUp = () => {
 
   // Send OTP
   const handleSendOTP = async () => {
+    setError("");
+    setLoading(true);
     if (!phoneNumber || phoneNumber.length < 10) {
       setError("Please enter a valid phone number");
       return;
     }
 
-    setError("");
-    setLoading(true);
+     if (passwordErrors.length > 0) {
+      setError("Please fix password requirements");
+      setLoading(false);
+      return;
+    }
+
+    // Check password match
+    if (!passwordMatch || password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
 
     try {
-      const res = await fetch(`${BACKEND_URL}/users/send-otp`, {
+      const res = await fetch(`${BACKEND_URL}/users/sendOtp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `${countryCode}${phoneNumber}` }),
+        body: JSON.stringify({
+          name: username,
+          email,
+          password,
+          phoneNumber: `${countryCode}${phoneNumber}`,
+        }),
       });
 
       const data = await res.json();
@@ -103,11 +121,11 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/users/verify-otp`, {
+      const res = await fetch(`${BACKEND_URL}/users/verfiyOtp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: `${countryCode}${phoneNumber}`,
+          email: email,
           otp: otp,
         }),
       });
@@ -169,11 +187,10 @@ const SignUp = () => {
       console.log(data);
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("token", data.token || "authenticated");
+      
 
       setSuccess(true);
-      setTimeout(() => navigate("/"), 1500);
+      setTimeout(() => navigate("/signin"), 1500);
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
       setSuccess(true);

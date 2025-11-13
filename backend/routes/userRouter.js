@@ -19,13 +19,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const pending= pendingUser.findOne({email}); 
-    if(pendingUser) return res.status(401).json({message: "Verify Phone Number First "}); 
+    const pending= await pendingUser.findOne({email}); 
+    if(pending) return res.status(401).json({message: "Verify Phone Number First "}); 
 
     const existing = await User.findOne({ email });
     console.log("Existing User : ", existing)
     if(!existing.otpVerified) return res.status(400).json({message: "OTP not verified"})
+    console.log("user registered: ", name)
     if (existing) return res.status(201).json({ message: 'User registered' });
+    
 
   } catch (err) {
     console.error('Register error:', err);
@@ -116,8 +118,8 @@ router.post("/sendOtp",async (req,res)=>{
       from: twilio_phone_number,
       to: phoneNumber,
     })
-
-   res.status(200).json({message: "OTP generated",otp}); 
+   console.log(`OTP: ${otp} Send to :   ${phoneNumber}`)
+   res.status(200).json({message: `OTP Send to  ${phoneNumber}`}); 
    } catch (error) {
     res.status(500).json({message:"Internal Server Error "}); 
     console.log(error);  
