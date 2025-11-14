@@ -1,4 +1,5 @@
-import { Play } from "lucide-react";
+// src/pages/Moviepage.jsx
+import { Play, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { BACKEND_URL } from "../lib/confg";
@@ -53,7 +54,7 @@ const Moviepage = () => {
     return () => controller.abort();
   }, [id]);
 
-  const data = localStorage.getItem('user')
+  const data = localStorage.getItem('user');
   const user = JSON.parse(data); 
 
   const createWatchParty = async () => {
@@ -75,6 +76,10 @@ const Moviepage = () => {
       console.error(err);
       alert("Something went wrong");
     }
+  };
+
+  const handleWatchNow = () => {
+    navigate(`/watch/${id}`);
   };
 
   if (!movie) {
@@ -167,23 +172,34 @@ const Moviepage = () => {
 
             {/* Buttons */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
+              {/* Watch Now Button - Primary */}
+              <button
+                onClick={handleWatchNow}
+                className="group inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all duration-300"
+              >
+                <Play className="w-4 h-4" fill="white" />
+                <span>Watch Now</span>
+              </button>
+
+              {/* Watch Trailer Button */}
               {trailerKey && (
                 <Link
                   to={`https://www.youtube.com/watch?v=${trailerKey}`}
                   target="_blank"
                 >
                   <button className="group inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/30 hover:scale-105 active:scale-95 transition-all duration-300">
-                    <Play className="w-4 h-4" />
+                    <i className="ri-play-circle-line text-lg"></i>
                     <span>Watch Trailer</span>
                   </button>
                 </Link>
               )}
 
+              {/* Create Watch Party Button */}
               <button
                 onClick={createWatchParty}
                 className="group inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800/90 backdrop-blur-sm border-2 border-cyan-400/50 hover:border-cyan-400 hover:bg-slate-700/90 px-6 py-3 text-sm font-bold text-white hover:scale-105 active:scale-95 transition-all duration-300"
               >
-                <i className="ri-group-2-line text-lg text-cyan-400"></i>
+                <Users className="w-4 h-4 text-cyan-400" />
                 <span>Create Watch Party</span>
               </button>
             </div>

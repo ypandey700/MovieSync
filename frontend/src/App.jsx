@@ -1,10 +1,12 @@
+// src/App.jsx
 import { useState, useEffect } from "react";
 import Navabar from "./components/Navabar";
 import Homepage from "./pages/Homepage";
-import Moviepage from './pages/Moviepage'
+import Moviepage from './pages/Moviepage';
+import SoloWatch from './pages/SoloWatch';
 import { Route, Routes } from "react-router-dom";
 import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp"
+import SignUp from "./pages/SignUp";
 import Watchparty from "./pages/Watchparty";
 import PartyRoom from "./pages/Partyroom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -14,10 +16,9 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate initial load
     setTimeout(() => {
       setLoading(false);
-    }, 2000); // 2 seconds loader
+    }, 2000);
   }, []);
 
   if (loading) {
@@ -40,6 +41,14 @@ function App() {
         } />
         <Route path={"/signin"} element={<SignIn />} />
         <Route path={"/signup"} element={<SignUp />} />
+        
+        {/* Solo Watch Route */}
+        <Route path="/watch/:id" element={
+          <ProtectedRoute>
+            <SoloWatch />
+          </ProtectedRoute>
+        } />
+        
         <Route path={"/watchparty"} element={
           <ProtectedRoute>
             <Watchparty />
@@ -52,6 +61,7 @@ function App() {
         } />
       </Routes>
     </div>
-  )
+  );
 }
+
 export default App;

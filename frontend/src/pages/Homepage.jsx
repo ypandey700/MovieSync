@@ -1,7 +1,9 @@
-import React from 'react'
-import Hero from '../components/Hero'
-import Cardlist from '../components/Cardlist'
-import Footer from '../components/Footer'
+// src/pages/Homepage.jsx
+import React from 'react';
+import Hero from '../components/Hero';
+import Cardlist from '../components/Cardlist';
+import Footer from '../components/Footer';
+import PreviouslyWatchedSection from '../components/PreviouslyWatchedSection';
 
 const Homepage = () => {
   return (
@@ -20,6 +22,8 @@ const Homepage = () => {
         <div className='py-8 px-12'>
           <Hero/>
         </div>
+
+       
 
         {/* Popular Section */}
         <div className='mt-16 px-12'>
@@ -59,11 +63,25 @@ const Homepage = () => {
           </div>
           <Cardlist category="now_playing" />
         </div>
+         {/* Previously Watched Section */}
+        <div className='mt-16 px-12'>
+          <div className='flex items-center gap-4 mb-6'>
+            <div className='w-1.5 h-10 bg-gradient-to-b from-purple-500 to-purple-600 rounded-full shadow-lg shadow-purple-500/50'></div>
+            <h2 className='text-3xl font-black text-white'>
+              Continue <span className='text-purple-500'>Watching</span>
+            </h2>
+            <div className='flex-1 h-px bg-gradient-to-r from-purple-500/40 to-transparent ml-4'></div>
+            <span className='px-3 py-1 bg-purple-500/20 border border-purple-500/40 rounded-full text-purple-400 text-xs font-bold uppercase tracking-wider'>
+              Resume
+            </span>
+          </div>
+          <PreviouslyWatchedSection />
+        </div>
 
         <Footer/>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Homepage
+export default Homepage;
