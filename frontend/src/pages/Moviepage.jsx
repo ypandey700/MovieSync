@@ -77,7 +77,7 @@ const Moviepage = () => {
       alert("Something went wrong");
     }
   };
-
+  console.log(movie)
   const handleWatchNow = () => {
     navigate(`/watch/${id}`);
   };
