@@ -1,5 +1,5 @@
 // src/pages/SoloWatch.jsx
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Play, Pause, Volume2, VolumeX, Maximize2, ChevronLeft, SkipBack, SkipForward, X, RotateCcw } from "lucide-react";
 import sampleVideo from "../assets/sample.mp4";
@@ -21,9 +21,9 @@ const SoloWatch = () => {
   const [volume, setVolume] = useState(100);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showResumeNotification, setShowResumeNotification] = useState(false);
-  const [isVideoReady, setIsVideoReady] = useState(false);
 
   const videoRef = useRef(null);
+  const playerContainerRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
   const saveIntervalRef = useRef(null);
   const progressBarRef = useRef(null);
@@ -45,17 +45,13 @@ const SoloWatch = () => {
     }
   }, [user, navigate]);
 
-  const saveWatchProgress = () => {
-    if (!videoRef.current || !movie?.id) {
-      return;
-    }
+  const saveWatchProgress = useCallback(() => {
+    if (!videoRef.current || !movie?.id) return;
 
     const currentTime = videoRef.current.currentTime;
     const duration = videoRef.current.duration;
 
-    if (!duration || currentTime < 5 || currentTime > duration - 10) {
-      return;
-    }
+    if (!duration || currentTime < 5 || currentTime > duration - 10) return;
 
     const watchData = {
       movieId: movie.id,
@@ -73,8 +69,9 @@ const SoloWatch = () => {
     } catch (err) {
       console.error('Error saving watch history:', err);
     }
-  };
+  }, [movie?.id]);
 
+  // Fetch movie data
   useEffect(() => {
     const controller = new AbortController();
     const fetchMovie = async () => {
@@ -93,7 +90,6 @@ const SoloWatch = () => {
         const data = await res.json();
         setMovie(data);
         
-        // Only show resume dialog if we have a resume time and user intended to resume
         if (isResuming && resumeTime > 0) {
           setShowResumeDialog(true);
         }
@@ -113,33 +109,19 @@ const SoloWatch = () => {
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      const videoDuration = video.duration;
-      console.log('✅ Duration loaded:', videoDuration);
-      setDuration(videoDuration);
-      setIsVideoReady(true);
-
-      // If not showing resume dialog and video is ready, start playing
-      if (!showResumeDialog && !isResuming) {
+      setDuration(video.duration);
+      // Auto-play if not showing resume dialog
+      if (!showResumeDialog) {
         video.play().catch(err => console.log("Auto-play prevented:", err));
       }
     };
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
-      
-      if (video.duration && Math.abs(video.duration - duration) > 0.1) {
-        setDuration(video.duration);
-      }
     };
 
-    const handlePlay = () => {
-      setIsPlaying(true);
-    };
-
-    const handlePause = () => {
-      setIsPlaying(false);
-    };
-
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
     const handleEnded = () => {
       setIsPlaying(false);
       saveWatchProgress();
@@ -152,21 +134,12 @@ const SoloWatch = () => {
       }
     };
 
-    // Add all event listeners
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('volumechange', handleVolumeChange);
-
-    // Force load if needed
-    if (video.readyState === 0) {
-      video.load();
-    } else if (video.duration) {
-      setDuration(video.duration);
-      setIsVideoReady(true);
-    }
 
     return () => {
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -176,49 +149,7 @@ const SoloWatch = () => {
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('volumechange', handleVolumeChange);
     };
-  }, [showResumeDialog, isResuming]);
-
-  // Start Over functionality
-  const startOver = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      setCurrentTime(0);
-      videoRef.current.play().catch(err => console.log("Play prevented:", err));
-    }
-  };
-
-  const handleResume = () => {
-    setShowResumeDialog(false);
-    
-    if (videoRef.current) {
-      const setTimeAndPlay = () => {
-        if (videoRef.current.readyState >= 2) {
-          videoRef.current.currentTime = resumeTime;
-          setCurrentTime(resumeTime);
-          setShowResumeNotification(true);
-          setTimeout(() => setShowResumeNotification(false), 3000);
-          videoRef.current.play().catch(err => console.log("Play prevented:", err));
-        } else {
-          videoRef.current.addEventListener('loadeddata', function onLoaded() {
-            videoRef.current.removeEventListener('loadeddata', onLoaded);
-            videoRef.current.currentTime = resumeTime;
-            setCurrentTime(resumeTime);
-            setShowResumeNotification(true);
-            setTimeout(() => setShowResumeNotification(false), 3000);
-            videoRef.current.play().catch(err => console.log("Play prevented:", err));
-          });
-          videoRef.current.load();
-        }
-      };
-      
-      setTimeAndPlay();
-    }
-  };
-
-  const handleStartFromBeginning = () => {
-    setShowResumeDialog(false);
-    startOver();
-  };
+  }, [showResumeDialog, saveWatchProgress]);
 
   // Save progress periodically
   useEffect(() => {
@@ -239,21 +170,11 @@ const SoloWatch = () => {
         clearInterval(saveIntervalRef.current);
       }
     };
-  }, [isPlaying, movie?.id]);
+  }, [isPlaying, movie?.id, saveWatchProgress]);
 
-  // Save on unmount
+  // Save on unmount and visibility change
   useEffect(() => {
-    return () => {
-      saveWatchProgress();
-    };
-  }, [movie?.id]);
-
-  // Save on page visibility change
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      saveWatchProgress();
-    };
-
+    const handleBeforeUnload = () => saveWatchProgress();
     const handleVisibilityChange = () => {
       if (document.hidden) {
         saveWatchProgress();
@@ -264,10 +185,11 @@ const SoloWatch = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      saveWatchProgress();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [movie?.id]);
+  }, [saveWatchProgress]);
 
   const handlePlayPause = (e) => {
     e?.stopPropagation();
@@ -282,41 +204,32 @@ const SoloWatch = () => {
     }
   };
 
-  const toggleFullscreen = () => {
-    const container = document.querySelector('.video-container');
-    if (!container) return;
-
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      container.requestFullscreen();
+  const handleResume = () => {
+    setShowResumeDialog(false);
+    if (videoRef.current && resumeTime > 0) {
+      videoRef.current.currentTime = resumeTime;
+      setCurrentTime(resumeTime);
+      setShowResumeNotification(true);
+      setTimeout(() => setShowResumeNotification(false), 3000);
+      videoRef.current.play().catch(err => console.log("Play prevented:", err));
     }
   };
 
-  const toggleMute = (e) => {
-    e?.stopPropagation();
+  const handleStartFromBeginning = () => {
+    setShowResumeDialog(false);
     if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
+      videoRef.current.currentTime = 0;
+      setCurrentTime(0);
+      videoRef.current.play().catch(err => console.log("Play prevented:", err));
     }
   };
 
-  const handleVolumeChangeInput = (e) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
+  const startOver = () => {
     if (videoRef.current) {
-      videoRef.current.volume = newVolume / 100;
-      if (newVolume > 0 && videoRef.current.muted) {
-        videoRef.current.muted = false;
-      }
+      videoRef.current.currentTime = 0;
+      setCurrentTime(0);
+      videoRef.current.play().catch(err => console.log("Play prevented:", err));
     }
-  };
-
-  const handleMouseMove = () => {
-    setShowControls(true);
-    clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 3000);
   };
 
   const skipForward = (e) => {
@@ -341,6 +254,43 @@ const SoloWatch = () => {
     }
   };
 
+  const toggleFullscreen = () => {
+    const container = playerContainerRef.current;
+    if (!container) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      container.requestFullscreen();
+    }
+  };
+
+  const toggleMute = (e) => {
+    e?.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+    }
+  };
+
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume / 100;
+      if (newVolume > 0 && videoRef.current.muted) {
+        videoRef.current.muted = false;
+      }
+    }
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) setShowControls(false);
+    }, 3000);
+  };
+
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -353,9 +303,7 @@ const SoloWatch = () => {
     const progressBar = progressBarRef.current;
     const video = videoRef.current;
     
-    if (!progressBar || !video || !video.duration) {
-      return;
-    }
+    if (!progressBar || !video || !video.duration) return;
 
     const rect = progressBar.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
@@ -378,7 +326,7 @@ const SoloWatch = () => {
     navigate('/');
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-black text-white">
         <div className="flex flex-col items-center gap-4">
@@ -387,18 +335,18 @@ const SoloWatch = () => {
         </div>
       </div>
     );
+  }
 
-  if (!movie)
+  if (!movie) {
     return (
       <div className="h-screen flex items-center justify-center bg-black text-white">
         <div className="text-xl">Movie not found.</div>
       </div>
     );
+  }
 
   const year = movie.release_date ? movie.release_date.split("-")[0] : "N/A";
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  
-  // FIX: Use savedDuration for resume dialog progress calculation
   const resumeProgressPercent = resumeTime > 0 && savedDuration > 0 
     ? (resumeTime / savedDuration) * 100 
     : 0;
@@ -462,7 +410,7 @@ const SoloWatch = () => {
                       <div className="flex items-center justify-between text-sm text-zinc-400 mb-3">
                         <span className="font-medium">Your Progress</span>
                         <span className="font-bold text-purple-400">
-                          {resumeProgressPercent > 0 ? Math.round(resumeProgressPercent) : 0}% watched
+                          {Math.round(resumeProgressPercent)}% watched
                         </span>
                       </div>
                       <div className="w-full h-3 bg-zinc-800/50 rounded-full overflow-hidden">
@@ -489,24 +437,7 @@ const SoloWatch = () => {
                         </div>
                       </div>
                     </div>
-
-                    {lastWatched && (
-                      <div className="text-center text-xs text-zinc-500">
-                        Last watched on {new Date(lastWatched).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    )}
                   </div>
-                </div>
-
-                <div className="mb-8">
-                  <h4 className="text-sm font-semibold text-zinc-400 mb-3 uppercase tracking-wider">Overview</h4>
-                  <p className="text-base text-zinc-300 leading-relaxed line-clamp-3">{movie.overview}</p>
                 </div>
 
                 <div className="flex gap-4">
@@ -570,16 +501,16 @@ const SoloWatch = () => {
       {/* Video Player Container */}
       <div className="flex-1 flex items-center justify-center bg-black p-4">
         <div 
-          className="video-container relative w-full max-w-6xl"
+          ref={playerContainerRef}
+          className="relative w-full max-w-6xl"
           style={{ aspectRatio: '16/9' }}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => isPlaying && setShowControls(false)}
         >
           <video
             ref={videoRef}
-            className="w-full h-full rounded-lg bg-black"
+            className="w-full h-full rounded-lg bg-black object-contain"
             src={sampleVideo}
-            preload="metadata"
           />
 
           {/* Overlay Controls */}
@@ -612,9 +543,7 @@ const SoloWatch = () => {
               >
                 <div
                   className="absolute h-full bg-purple-500 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${progressPercent}%`,
-                  }}
+                  style={{ width: `${progressPercent}%` }}
                 />
                 <div
                   className="absolute w-4 h-4 bg-white rounded-full -top-1 shadow-lg transition-all group-hover:scale-125"
@@ -662,7 +591,7 @@ const SoloWatch = () => {
                       min="0"
                       max="100"
                       value={isMuted ? 0 : volume}
-                      onChange={handleVolumeChangeInput}
+                      onChange={handleVolumeChange}
                       className="w-0 group-hover:w-24 transition-all duration-300 accent-purple-500"
                     />
                   </div>
