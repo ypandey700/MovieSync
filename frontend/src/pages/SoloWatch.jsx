@@ -1,19 +1,18 @@
+// src/pages/SoloWatch.jsx
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Play, Pause, Volume2, VolumeX, Maximize2, ChevronLeft, SkipBack, SkipForward, X, RotateCcw } from "lucide-react";
+import sampleVideo from "../assets/sample.mp4";
+
+const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN;
 
 const SoloWatch = () => {
-  // Mock movie data for demonstration
-  const mockMovie = {
-    id: 12345,
-    title: "Sample Movie",
-    backdrop_path: "/sample.jpg",
-    release_date: "2024-01-15",
-    runtime: 142,
-    vote_average: 8.5
-  };
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [movie, setMovie] = useState(mockMovie);
-  const [loading, setLoading] = useState(false);
+  const [movie, setMovie] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -29,28 +28,68 @@ const SoloWatch = () => {
   const saveIntervalRef = useRef(null);
   const progressBarRef = useRef(null);
 
-  // Simulate getting resume data
+  // Get resume data from location state OR localStorage
+  const resumeTime = location.state?.resumeTime || 0;
+  const savedDuration = location.state?.duration || 0;
+  const isResuming = location.state?.isResuming || false;
+
   const [resumeData, setResumeData] = useState(null);
 
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("user") || "{}"),
+    []
+  );
+
   useEffect(() => {
-    // Check for existing watch progress
-    const checkResumeData = () => {
+    if (!user?.userId) {
+      navigate("/");
+    }
+  }, [user, navigate]);
+
+  // Fetch movie data
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchMovie = async () => {
       try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/movie/${id}?language=en-US`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              Authorization: `Bearer ${TMDB_TOKEN}`,
+            },
+            signal: controller.signal,
+          }
+        );
+        const data = await res.json();
+        setMovie(data);
+        
+        // Check for existing watch progress
         const history = JSON.parse(localStorage.getItem('watchHistory') || '[]');
-        const movieProgress = history.find(item => item.movieId === movie.id);
+        const movieProgress = history.find(item => item.movieId === parseInt(id));
         
         if (movieProgress && movieProgress.currentTime > 5) {
           setResumeData(movieProgress);
           setShowResumeDialog(true);
+        } else if (isResuming && resumeTime > 0) {
+          // Fallback to location state
+          setResumeData({
+            currentTime: resumeTime,
+            duration: savedDuration,
+            movieId: parseInt(id)
+          });
+          setShowResumeDialog(true);
         }
       } catch (err) {
-        console.error('Error checking resume data:', err);
+        if (err.name !== "AbortError") console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
-
-    checkResumeData();
-    setLoading(false);
-  }, [movie.id]);
+    fetchMovie();
+    return () => controller.abort();
+  }, [id, resumeTime, savedDuration, isResuming]);
 
   const saveWatchProgress = useCallback(() => {
     if (!videoRef.current || !movie?.id) return;
@@ -58,7 +97,6 @@ const SoloWatch = () => {
     const currentTime = videoRef.current.currentTime;
     const duration = videoRef.current.duration;
 
-    // Don't save if video just started or is about to end
     if (!duration || currentTime < 5 || currentTime > duration - 10) return;
 
     const watchData = {
@@ -74,7 +112,7 @@ const SoloWatch = () => {
       filtered.unshift(watchData);
       const limited = filtered.slice(0, 20);
       localStorage.setItem('watchHistory', JSON.stringify(limited));
-      console.log('Progress saved:', watchData);
+      console.log('✅ Progress saved:', formatTime(currentTime));
     } catch (err) {
       console.error('Error saving watch history:', err);
     }
@@ -87,6 +125,7 @@ const SoloWatch = () => {
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      console.log('📺 Video loaded, duration:', formatTime(video.duration));
       // Auto-play if not showing resume dialog
       if (!showResumeDialog) {
         video.play().catch(err => console.log("Auto-play prevented:", err));
@@ -97,9 +136,18 @@ const SoloWatch = () => {
       setCurrentTime(video.currentTime);
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handlePlay = () => {
+      console.log('▶️ Playing');
+      setIsPlaying(true);
+    };
+    
+    const handlePause = () => {
+      console.log('⏸️ Paused');
+      setIsPlaying(false);
+    };
+    
     const handleEnded = () => {
+      console.log('⏹️ Ended');
       setIsPlaying(false);
       saveWatchProgress();
     };
@@ -151,10 +199,15 @@ const SoloWatch = () => {
 
   // Save on unmount and visibility change
   useEffect(() => {
-    const handleBeforeUnload = () => saveWatchProgress();
+    const handleBeforeUnload = () => {
+      saveWatchProgress();
+      console.log('💾 Saving on page unload');
+    };
+    
     const handleVisibilityChange = () => {
       if (document.hidden) {
         saveWatchProgress();
+        console.log('💾 Saving on visibility change');
       }
     };
 
@@ -182,6 +235,7 @@ const SoloWatch = () => {
   };
 
   const handleResume = () => {
+    console.log('🔄 Resuming from:', formatTime(resumeData.currentTime));
     setShowResumeDialog(false);
     if (videoRef.current && resumeData?.currentTime > 0) {
       videoRef.current.currentTime = resumeData.currentTime;
@@ -193,6 +247,7 @@ const SoloWatch = () => {
   };
 
   const handleStartFromBeginning = () => {
+    console.log('🔄 Starting from beginning');
     setShowResumeDialog(false);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
@@ -295,12 +350,12 @@ const SoloWatch = () => {
 
   const goBack = () => {
     saveWatchProgress();
-    alert('Going back...');
+    navigate(-1);
   };
 
   const exitPlayer = () => {
     saveWatchProgress();
-    alert('Exiting player...');
+    navigate('/');
   };
 
   if (loading) {
@@ -310,6 +365,14 @@ const SoloWatch = () => {
           <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
           <span className="text-xl font-medium">Loading movie...</span>
         </div>
+      </div>
+    );
+  }
+
+  if (!movie) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-xl">Movie not found.</div>
       </div>
     );
   }
@@ -334,10 +397,18 @@ const SoloWatch = () => {
             </button>
 
             <div className="flex flex-col lg:flex-row">
-              <div className="relative lg:w-2/5 h-80 lg:h-auto overflow-hidden bg-gradient-to-br from-purple-600/20 to-pink-600/20">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Play size={80} className="text-white/20" />
-                </div>
+              <div className="relative lg:w-2/5 h-80 lg:h-auto overflow-hidden">
+                {movie.backdrop_path ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+                    alt={movie.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+                    <Play size={80} className="text-white/20" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-zinc-950/50 to-zinc-950 lg:block hidden"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent lg:hidden"></div>
               </div>
@@ -404,6 +475,18 @@ const SoloWatch = () => {
                         </div>
                       </div>
                     </div>
+
+                    {resumeData.lastWatched && (
+                      <div className="text-center text-xs text-zinc-500">
+                        Last watched on {new Date(resumeData.lastWatched).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -477,7 +560,7 @@ const SoloWatch = () => {
           <video
             ref={videoRef}
             className="w-full h-full rounded-lg bg-black object-contain"
-            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            src={sampleVideo}
           />
 
           {/* Overlay Controls */}
@@ -585,12 +668,6 @@ const SoloWatch = () => {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Demo Info Banner */}
-      <div className="absolute bottom-4 left-4 bg-purple-600/90 backdrop-blur-sm px-4 py-2 rounded-lg text-sm">
-        <p className="font-semibold">Demo Mode</p>
-        <p className="text-xs text-purple-100">Watch progress is saved to localStorage. Play video past 5s, then refresh to see resume feature!</p>
       </div>
     </div>
   );
