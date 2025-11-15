@@ -54,17 +54,17 @@ const Navbar = () => {
           <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
             Suggestion
           </li>
-          <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
+          {/* <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
             Connect
-          </li>
+          </li> */}
           <Link to={'/watchparty'}>
             <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
               Watch Party
             </li>
           </Link>
-          <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
+          {/* <li className="cursor-pointer hover:text-orange-500 transition-colors duration-200 text-sm font-medium">
             Momentz
-          </li>
+          </li> */}
         </ul>
 
         {/* Right Section */}
