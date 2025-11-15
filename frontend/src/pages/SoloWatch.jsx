@@ -1,18 +1,19 @@
-// src/pages/SoloWatch.jsx
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Play, Pause, Volume2, VolumeX, Maximize2, ChevronLeft, SkipBack, SkipForward, X, RotateCcw } from "lucide-react";
-import sampleVideo from "../assets/sample.mp4";
-
-const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN;
 
 const SoloWatch = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Mock movie data for demonstration
+  const mockMovie = {
+    id: 12345,
+    title: "Sample Movie",
+    backdrop_path: "/sample.jpg",
+    release_date: "2024-01-15",
+    runtime: 142,
+    vote_average: 8.5
+  };
 
-  const [movie, setMovie] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [movie, setMovie] = useState(mockMovie);
+  const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -28,22 +29,28 @@ const SoloWatch = () => {
   const saveIntervalRef = useRef(null);
   const progressBarRef = useRef(null);
 
-  // Get resume data from location state
-  const resumeTime = location.state?.resumeTime || 0;
-  const savedDuration = location.state?.duration || 0;
-  const lastWatched = location.state?.lastWatched || null;
-  const isResuming = location.state?.isResuming || false;
-
-  const user = useMemo(
-    () => JSON.parse(localStorage.getItem("user") || "{}"),
-    []
-  );
+  // Simulate getting resume data
+  const [resumeData, setResumeData] = useState(null);
 
   useEffect(() => {
-    if (!user?.userId) {
-      navigate("/");
-    }
-  }, [user, navigate]);
+    // Check for existing watch progress
+    const checkResumeData = () => {
+      try {
+        const history = JSON.parse(localStorage.getItem('watchHistory') || '[]');
+        const movieProgress = history.find(item => item.movieId === movie.id);
+        
+        if (movieProgress && movieProgress.currentTime > 5) {
+          setResumeData(movieProgress);
+          setShowResumeDialog(true);
+        }
+      } catch (err) {
+        console.error('Error checking resume data:', err);
+      }
+    };
+
+    checkResumeData();
+    setLoading(false);
+  }, [movie.id]);
 
   const saveWatchProgress = useCallback(() => {
     if (!videoRef.current || !movie?.id) return;
@@ -51,6 +58,7 @@ const SoloWatch = () => {
     const currentTime = videoRef.current.currentTime;
     const duration = videoRef.current.duration;
 
+    // Don't save if video just started or is about to end
     if (!duration || currentTime < 5 || currentTime > duration - 10) return;
 
     const watchData = {
@@ -66,42 +74,11 @@ const SoloWatch = () => {
       filtered.unshift(watchData);
       const limited = filtered.slice(0, 20);
       localStorage.setItem('watchHistory', JSON.stringify(limited));
+      console.log('Progress saved:', watchData);
     } catch (err) {
       console.error('Error saving watch history:', err);
     }
   }, [movie?.id]);
-
-  // Fetch movie data
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchMovie = async () => {
-      try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/movie/${id}?language=en-US`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-              Authorization: `Bearer ${TMDB_TOKEN}`,
-            },
-            signal: controller.signal,
-          }
-        );
-        const data = await res.json();
-        setMovie(data);
-        
-        if (isResuming && resumeTime > 0) {
-          setShowResumeDialog(true);
-        }
-      } catch (err) {
-        if (err.name !== "AbortError") console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMovie();
-    return () => controller.abort();
-  }, [id, resumeTime, isResuming]);
 
   // Video event handlers
   useEffect(() => {
@@ -151,14 +128,14 @@ const SoloWatch = () => {
     };
   }, [showResumeDialog, saveWatchProgress]);
 
-  // Save progress periodically
+  // Save progress periodically while playing
   useEffect(() => {
     if (isPlaying && movie?.id) {
       saveWatchProgress();
       
       saveIntervalRef.current = setInterval(() => {
         saveWatchProgress();
-      }, 10000);
+      }, 10000); // Save every 10 seconds
     } else {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
@@ -206,9 +183,9 @@ const SoloWatch = () => {
 
   const handleResume = () => {
     setShowResumeDialog(false);
-    if (videoRef.current && resumeTime > 0) {
-      videoRef.current.currentTime = resumeTime;
-      setCurrentTime(resumeTime);
+    if (videoRef.current && resumeData?.currentTime > 0) {
+      videoRef.current.currentTime = resumeData.currentTime;
+      setCurrentTime(resumeData.currentTime);
       setShowResumeNotification(true);
       setTimeout(() => setShowResumeNotification(false), 3000);
       videoRef.current.play().catch(err => console.log("Play prevented:", err));
@@ -318,12 +295,12 @@ const SoloWatch = () => {
 
   const goBack = () => {
     saveWatchProgress();
-    navigate(-1);
+    alert('Going back...');
   };
 
   const exitPlayer = () => {
     saveWatchProgress();
-    navigate('/');
+    alert('Exiting player...');
   };
 
   if (loading) {
@@ -337,24 +314,16 @@ const SoloWatch = () => {
     );
   }
 
-  if (!movie) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-xl">Movie not found.</div>
-      </div>
-    );
-  }
-
   const year = movie.release_date ? movie.release_date.split("-")[0] : "N/A";
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const resumeProgressPercent = resumeTime > 0 && savedDuration > 0 
-    ? (resumeTime / savedDuration) * 100 
+  const resumeProgressPercent = resumeData?.currentTime > 0 && resumeData?.duration > 0 
+    ? (resumeData.currentTime / resumeData.duration) * 100 
     : 0;
 
   return (
     <div className="h-screen bg-black text-white flex flex-col">
       {/* Resume Dialog Modal */}
-      {showResumeDialog && (
+      {showResumeDialog && resumeData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
           <div className="relative bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden">
             <button
@@ -365,12 +334,10 @@ const SoloWatch = () => {
             </button>
 
             <div className="flex flex-col lg:flex-row">
-              <div className="relative lg:w-2/5 h-80 lg:h-auto overflow-hidden">
-                <img
-                  src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-                  alt={movie.title}
-                  className="w-full h-full object-cover"
-                />
+              <div className="relative lg:w-2/5 h-80 lg:h-auto overflow-hidden bg-gradient-to-br from-purple-600/20 to-pink-600/20">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Play size={80} className="text-white/20" />
+                </div>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-zinc-950/50 to-zinc-950 lg:block hidden"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent lg:hidden"></div>
               </div>
@@ -426,14 +393,14 @@ const SoloWatch = () => {
                         <Play size={18} className="text-purple-400" />
                         <div>
                           <p className="text-sm text-zinc-400">Resume at</p>
-                          <p className="font-bold text-white text-lg">{formatTime(resumeTime)}</p>
+                          <p className="font-bold text-white text-lg">{formatTime(resumeData.currentTime)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-sm text-zinc-500">of</div>
                         <div className="text-right">
                           <p className="text-sm text-zinc-400">Total duration</p>
-                          <p className="font-bold text-white">{formatTime(savedDuration)}</p>
+                          <p className="font-bold text-white">{formatTime(resumeData.duration)}</p>
                         </div>
                       </div>
                     </div>
@@ -510,7 +477,7 @@ const SoloWatch = () => {
           <video
             ref={videoRef}
             className="w-full h-full rounded-lg bg-black object-contain"
-            src={sampleVideo}
+            src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
           />
 
           {/* Overlay Controls */}
@@ -612,12 +579,18 @@ const SoloWatch = () => {
           </div>
 
           {/* Resume notification */}
-          {showResumeNotification && (
+          {showResumeNotification && resumeData && (
             <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-purple-500 px-6 py-3 rounded-xl text-sm font-semibold shadow-2xl z-50">
-              ▶ Resumed from {formatTime(resumeTime)}
+              ▶ Resumed from {formatTime(resumeData.currentTime)}
             </div>
           )}
         </div>
+      </div>
+
+      {/* Demo Info Banner */}
+      <div className="absolute bottom-4 left-4 bg-purple-600/90 backdrop-blur-sm px-4 py-2 rounded-lg text-sm">
+        <p className="font-semibold">Demo Mode</p>
+        <p className="text-xs text-purple-100">Watch progress is saved to localStorage. Play video past 5s, then refresh to see resume feature!</p>
       </div>
     </div>
   );
