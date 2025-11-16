@@ -7,6 +7,12 @@ import FeatureEngineer from '../features/feature_engineer.js';
 import MoodAnalyzer from '../utils/mood_analyzer.js';
 import Content from '../../models/Content.js';
 import User from '../../models/User.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class RecommendationEngine {
   constructor() {
@@ -40,7 +46,23 @@ class RecommendationEngine {
         throw new Error('User not found');
       }
 
-      const allContent = await Content.find({});
+      // Try to fetch from database first
+      let allContent = await Content.find({});
+      
+      // If database is empty, use static dataset
+      if (allContent.length === 0) {
+        console.log('[RecommendationEngine] Database empty, loading static movies dataset for mood-based recommendations');
+        try {
+          const staticMoviesPath = join(__dirname, '../../data/staticMovies.json');
+          const staticMoviesData = readFileSync(staticMoviesPath, 'utf-8');
+          allContent = JSON.parse(staticMoviesData);
+          console.log(`[RecommendationEngine] Loaded ${allContent.length} movies from static dataset`);
+        } catch (error) {
+          console.error('[RecommendationEngine] Error loading static movies:', error);
+          return [];
+        }
+      }
+      
       if (allContent.length === 0) {
         return [];
       }
@@ -55,7 +77,9 @@ class RecommendationEngine {
       // Score all content
       const scoredContent = await Promise.all(
         allContent.map(async (content) => {
-          const contentFeatures = this.featureEngineer.extractContentFeatures(content);
+          // Handle both Mongoose documents and plain objects from static dataset
+          const contentObj = content.toObject ? content.toObject() : content;
+          const contentFeatures = this.featureEngineer.extractContentFeatures(contentObj);
           
           // Calculate base similarity score
           const similarityScore = this.featureEngineer.calculateSimilarity(
@@ -73,7 +97,7 @@ class RecommendationEngine {
           // Check if already watched (penalty)
           const watchedPenalty = this._calculateWatchedPenalty(
             user.viewing_history || [],
-            content.contentId
+            contentObj.contentId
           );
 
           // Genre preference boost
@@ -92,7 +116,7 @@ class RecommendationEngine {
           );
 
           return {
-            content: content.toObject(),
+            content: contentObj,
             score: finalScore,
             similarityScore,
             moodScore,
@@ -287,23 +311,43 @@ class RecommendationEngine {
     try {
       const moodAnalysis = this.moodAnalyzer.analyzeMood(moodText);
       
-      // Get popular content matching mood
-      const allContent = await Content.find({})
+      // Try to fetch from database first
+      let allContent = await Content.find({})
         .sort({ rating: -1 })
         .limit(limit * 3);
+      
+      // If database is empty, use static dataset
+      if (allContent.length === 0) {
+        console.log('[RecommendationEngine] Database empty, loading static movies for cold start mood-based recommendations');
+        try {
+          const staticMoviesPath = join(__dirname, '../../data/staticMovies.json');
+          const staticMoviesData = readFileSync(staticMoviesPath, 'utf-8');
+          const staticMovies = JSON.parse(staticMoviesData);
+          // Sort by rating and limit
+          allContent = staticMovies
+            .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+            .slice(0, limit * 3);
+          console.log(`[RecommendationEngine] Loaded ${allContent.length} movies from static dataset for cold start`);
+        } catch (error) {
+          console.error('[RecommendationEngine] Error loading static movies for cold start:', error);
+          return [];
+        }
+      }
 
       const scoredContent = allContent.map(content => {
-        const contentFeatures = this.featureEngineer.extractContentFeatures(content);
+        // Handle both Mongoose documents and plain objects
+        const contentObj = content.toObject ? content.toObject() : content;
+        const contentFeatures = this.featureEngineer.extractContentFeatures(contentObj);
         const moodScore = this.moodAnalyzer.getMoodCompatibility(
           contentFeatures.moodTags,
           moodAnalysis
         );
 
         // Combine popularity and mood
-        const score = (content.rating / 10) * 0.6 + moodScore * 0.4;
+        const score = ((contentObj.rating || 0) / 10) * 0.6 + moodScore * 0.4;
 
         return {
-          content: content.toObject(),
+          content: contentObj,
           score,
           moodScore,
         };

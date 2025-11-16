@@ -7,6 +7,12 @@ import express from 'express';
 import RecommendationEngine from '../ML model/models/recommendation_engine.js';
 import Content from '../models/Content.js';
 import User from '../models/User.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
 
@@ -109,6 +115,70 @@ router.post('/suggestions', async (req, res) => {
       content = await Content.find({});
     }
 
+    // If database is empty, load from static dataset
+    if (content.length === 0) {
+      console.log('[AI Suggestions] Database empty, loading static movies dataset with mood filtering');
+      try {
+        const staticMoviesPath = join(__dirname, '../data/staticMovies.json');
+        const staticMoviesData = readFileSync(staticMoviesPath, 'utf-8');
+        const staticMovies = JSON.parse(staticMoviesData);
+        
+        // Apply filters to static movies if not "Surprise me"
+        if (!surpriseMe) {
+          content = staticMovies.filter(movie => {
+            // Genre filter
+            if (genre && (!movie.genre || !movie.genre.includes(genre))) {
+              return false;
+            }
+            // Mood filter - check if movie's mood_tags match the requested mood
+            if (mood) {
+              const moodLower = mood.toLowerCase();
+              const movieMoods = (movie.mood_tags || []).map(m => m.toLowerCase());
+              if (!movieMoods.some(m => m.includes(moodLower) || moodLower.includes(m))) {
+                // If mood doesn't match, still allow but with lower priority (will be scored lower)
+                // This allows mood-based scoring to work
+              }
+            }
+            // Decade filter
+            if (decade && decade !== 'Any' && movie.year) {
+              let matchesDecade = false;
+              switch (decade) {
+                case '2020s': matchesDecade = movie.year >= 2020 && movie.year <= 2029; break;
+                case '2010s': matchesDecade = movie.year >= 2010 && movie.year <= 2019; break;
+                case '2000s': matchesDecade = movie.year >= 2000 && movie.year <= 2009; break;
+                case '1990s': matchesDecade = movie.year >= 1990 && movie.year <= 1999; break;
+                case 'Older': matchesDecade = movie.year < 1990; break;
+              }
+              if (!matchesDecade) return false;
+            }
+            // Year filter (legacy)
+            if (year && !decade && movie.year) {
+              if (typeof year === 'string' && year.includes('-')) {
+                const [startYear, endYear] = year.split('-').map(y => parseInt(y.trim()));
+                if (movie.year < startYear || movie.year > endYear) return false;
+              } else {
+                const yearNum = parseInt(year);
+                if (movie.year !== yearNum) return false;
+              }
+            }
+            return true;
+          });
+        } else {
+          content = staticMovies;
+        }
+        
+        console.log(`[AI Suggestions] Loaded ${content.length} movies from static dataset (mood: ${mood || 'any'})`);
+      } catch (error) {
+        console.error('[AI Suggestions] Error loading static movies:', error);
+        return res.status(200).json({
+          success: true,
+          recommendations: [],
+          message: 'No movies found matching your criteria. Try adjusting your filters or enable "Surprise me".',
+          count: 0,
+        });
+      }
+    }
+
     if (content.length === 0) {
       return res.status(200).json({
         success: true,
@@ -128,8 +198,11 @@ router.post('/suggestions', async (req, res) => {
       }
     }
 
-    // Score content based on filters and user preferences
-    let recommendations = await scoreContentForUser(content, user, { genre, mood, decade, language, length, year }, surpriseMe);
+    // Convert Mongoose documents to plain objects if needed (for static dataset compatibility)
+    const contentArray = content.map(item => item.toObject ? item.toObject() : item);
+    
+    // Score content based on filters and user preferences (with mood-based scoring)
+    let recommendations = await scoreContentForUser(contentArray, user, { genre, mood, decade, language, length, year }, surpriseMe);
 
     // Deduplicate by contentId
     const seen = new Set();
