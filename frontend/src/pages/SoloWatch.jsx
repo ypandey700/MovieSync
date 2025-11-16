@@ -1,10 +1,15 @@
 // src/pages/SoloWatch.jsx
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Play, Pause, Volume2, VolumeX, Maximize2, ChevronLeft, SkipBack, SkipForward, X, RotateCcw } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize2, ChevronLeft, SkipBack, SkipForward, X, RotateCcw, Info, GemIcon } from "lucide-react";
 import sampleVideo from "../assets/sample.mp4";
+import { GoogleGenAI } from "@google/genai";
 
 const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN;
+const GEMINI_API_KEY =import.meta.env.VITE_GEMINI_API_KEY; 
+
+
+const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const SoloWatch = () => {
   const { id } = useParams();
@@ -21,6 +26,10 @@ const SoloWatch = () => {
   const [volume, setVolume] = useState(100);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showResumeNotification, setShowResumeNotification] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false); // New state for summary modal
+  const [summaryText, setSummaryText] = useState(""); // New state for summary text
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false); // New state for summary loading
+  const [summaryError, setSummaryError] = useState(""); // New state for summary errors
 
   const videoRef = useRef(null);
   const playerContainerRef = useRef(null);
@@ -35,10 +44,7 @@ const SoloWatch = () => {
 
   const [resumeData, setResumeData] = useState(null);
 
-  const user = useMemo(
-    () => JSON.parse(localStorage.getItem("user") || "{}"),
-    []
-  );
+  const user = useMemo(() => JSON.parse(localStorage.getItem("user") || "{}"), []);
 
   useEffect(() => {
     if (!user?.userId) {
@@ -51,33 +57,29 @@ const SoloWatch = () => {
     const controller = new AbortController();
     const fetchMovie = async () => {
       try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/movie/${id}?language=en-US`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json",
-              Authorization: `Bearer ${TMDB_TOKEN}`,
-            },
-            signal: controller.signal,
-          }
-        );
+        const res = await fetch(`https://api.themoviedb.org/3/movie/${id}?language=en-US`, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${TMDB_TOKEN}`,
+          },
+          signal: controller.signal,
+        });
         const data = await res.json();
         setMovie(data);
-        
+
         // Check for existing watch progress
-        const history = JSON.parse(localStorage.getItem('watchHistory') || '[]');
-        const movieProgress = history.find(item => item.movieId === parseInt(id));
-        
+        const history = JSON.parse(localStorage.getItem("watchHistory") || "[]");
+        const movieProgress = history.find((item) => item.movieId === parseInt(id));
+
         if (movieProgress && movieProgress.currentTime > 5) {
           setResumeData(movieProgress);
           setShowResumeDialog(true);
         } else if (isResuming && resumeTime > 0) {
-          // Fallback to location state
           setResumeData({
             currentTime: resumeTime,
             duration: savedDuration,
-            movieId: parseInt(id)
+            movieId: parseInt(id),
           });
           setShowResumeDialog(true);
         }
@@ -89,7 +91,7 @@ const SoloWatch = () => {
     };
     fetchMovie();
     return () => controller.abort();
-  }, [id, resumeTime, savedDuration, isResuming]);
+  }, [id, resumeTime, savedDuration, isResuming, navigate]);
 
   const saveWatchProgress = useCallback(() => {
     if (!videoRef.current || !movie?.id) return;
@@ -107,14 +109,13 @@ const SoloWatch = () => {
     };
 
     try {
-      const history = JSON.parse(localStorage.getItem('watchHistory') || '[]');
-      const filtered = history.filter(item => item.movieId !== movie.id);
+      const history = JSON.parse(localStorage.getItem("watchHistory") || "[]");
+      const filtered = history.filter((item) => item.movieId !== movie.id);
       filtered.unshift(watchData);
       const limited = filtered.slice(0, 20);
-      localStorage.setItem('watchHistory', JSON.stringify(limited));
-      console.log('✅ Progress saved:', formatTime(currentTime));
+      localStorage.setItem("watchHistory", JSON.stringify(limited));
     } catch (err) {
-      console.error('Error saving watch history:', err);
+      console.error("Error saving watch history:", err);
     }
   }, [movie?.id]);
 
@@ -125,10 +126,8 @@ const SoloWatch = () => {
 
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
-      console.log('📺 Video loaded, duration:', formatTime(video.duration));
-      // Auto-play if not showing resume dialog
       if (!showResumeDialog) {
-        video.play().catch(err => console.log("Auto-play prevented:", err));
+        video.play().catch((err) => console.log("Auto-play prevented:", err));
       }
     };
 
@@ -137,17 +136,14 @@ const SoloWatch = () => {
     };
 
     const handlePlay = () => {
-      console.log('▶️ Playing');
       setIsPlaying(true);
     };
-    
+
     const handlePause = () => {
-      console.log('⏸️ Paused');
       setIsPlaying(false);
     };
-    
+
     const handleEnded = () => {
-      console.log('⏹️ Ended');
       setIsPlaying(false);
       saveWatchProgress();
     };
@@ -159,20 +155,20 @@ const SoloWatch = () => {
       }
     };
 
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('ended', handleEnded);
-    video.addEventListener('volumechange', handleVolumeChange);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    video.addEventListener("volumechange", handleVolumeChange);
 
     return () => {
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('ended', handleEnded);
-      video.removeEventListener('volumechange', handleVolumeChange);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("volumechange", handleVolumeChange);
     };
   }, [showResumeDialog, saveWatchProgress]);
 
@@ -180,10 +176,9 @@ const SoloWatch = () => {
   useEffect(() => {
     if (isPlaying && movie?.id) {
       saveWatchProgress();
-      
       saveIntervalRef.current = setInterval(() => {
         saveWatchProgress();
-      }, 10000); // Save every 10 seconds
+      }, 10000);
     } else {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
@@ -201,23 +196,21 @@ const SoloWatch = () => {
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveWatchProgress();
-      console.log('💾 Saving on page unload');
     };
-    
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         saveWatchProgress();
-        console.log('💾 Saving on visibility change');
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       saveWatchProgress();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [saveWatchProgress]);
 
@@ -227,7 +220,7 @@ const SoloWatch = () => {
     if (!v) return;
 
     if (v.paused || v.ended) {
-      v.play().catch(error => console.log("Play prevented:", error));
+      v.play().catch((error) => console.log("Play prevented:", error));
     } else {
       v.pause();
       saveWatchProgress();
@@ -235,24 +228,22 @@ const SoloWatch = () => {
   };
 
   const handleResume = () => {
-    console.log('🔄 Resuming from:', formatTime(resumeData.currentTime));
     setShowResumeDialog(false);
     if (videoRef.current && resumeData?.currentTime > 0) {
       videoRef.current.currentTime = resumeData.currentTime;
       setCurrentTime(resumeData.currentTime);
       setShowResumeNotification(true);
       setTimeout(() => setShowResumeNotification(false), 3000);
-      videoRef.current.play().catch(err => console.log("Play prevented:", err));
+      videoRef.current.play().catch((err) => console.log("Play prevented:", err));
     }
   };
 
   const handleStartFromBeginning = () => {
-    console.log('🔄 Starting from beginning');
     setShowResumeDialog(false);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       setCurrentTime(0);
-      videoRef.current.play().catch(err => console.log("Play prevented:", err));
+      videoRef.current.play().catch((err) => console.log("Play prevented:", err));
     }
   };
 
@@ -260,17 +251,14 @@ const SoloWatch = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       setCurrentTime(0);
-      videoRef.current.play().catch(err => console.log("Play prevented:", err));
+      videoRef.current.play().catch((err) => console.log("Play prevented:", err));
     }
   };
 
   const skipForward = (e) => {
     e?.stopPropagation();
     if (videoRef.current && videoRef.current.duration) {
-      const newTime = Math.min(
-        videoRef.current.currentTime + 10,
-        videoRef.current.duration
-      );
+      const newTime = Math.min(videoRef.current.currentTime + 10, videoRef.current.duration);
       videoRef.current.currentTime = newTime;
     }
   };
@@ -278,10 +266,7 @@ const SoloWatch = () => {
   const skipBackward = (e) => {
     e?.stopPropagation();
     if (videoRef.current) {
-      const newTime = Math.max(
-        videoRef.current.currentTime - 10,
-        0
-      );
+      const newTime = Math.max(videoRef.current.currentTime - 10, 0);
       videoRef.current.currentTime = newTime;
     }
   };
@@ -334,13 +319,13 @@ const SoloWatch = () => {
     e.stopPropagation();
     const progressBar = progressBarRef.current;
     const video = videoRef.current;
-    
+
     if (!progressBar || !video || !video.duration) return;
 
     const rect = progressBar.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
     const newTime = pos * video.duration;
-    
+
     if (!isNaN(newTime) && newTime >= 0 && newTime <= video.duration) {
       video.currentTime = newTime;
       setCurrentTime(newTime);
@@ -355,7 +340,60 @@ const SoloWatch = () => {
 
   const exitPlayer = () => {
     saveWatchProgress();
-    navigate('/');
+    navigate("/");
+  };
+
+  // New: Handle summary request
+  const handleShowSummary = async () => {
+    if (!movie || !videoRef.current || !movie.runtime) {
+      setSummaryError("Unable to generate summary: Movie data or video not loaded.");
+      setShowSummaryModal(true);
+      return;
+    }
+
+    setShowSummaryModal(true);
+    setIsSummaryLoading(true);
+    setSummaryText("");
+    setSummaryError("");
+
+    // Map sample video progress to movie runtime
+    const videoDuration = videoRef.current.duration || duration;
+    const videoCurrentTime = videoRef.current.currentTime || currentTime;
+    const movieRuntimeSeconds = movie.runtime * 60; // Convert minutes to seconds
+    const progressFraction = videoDuration > 0 ? videoCurrentTime / videoDuration : 0;
+    const mappedTime = Math.round(progressFraction * movieRuntimeSeconds);
+
+    // Mock summary if no valid API key
+    if (GEMINI_API_KEY === "MOCK_API_KEY") {
+      setTimeout(() => {
+        setSummaryText(
+          `This is a mock summary for "${movie.title}" up to ${formatTime(mappedTime)}. In a real app, Gemini would summarize the movie's plot based on your progress.`
+        );
+        setIsSummaryLoading(false);
+      }, 1500);
+      return;
+    }
+
+    // Construct prompt for Gemini
+    const prompt = `The user was watching the movie titled "${movie.title}".
+    Its description is: "${movie.overview || "No description available."}".
+    The total duration of the movie is ${formatTime(movie.runtime * 60)}.
+    The user stopped watching at the ${formatTime(mappedTime)} mark.
+    Please provide a concise summary (100-150 words) of the plot that has likely occurred up to this point.
+    Do not reveal major spoilers beyond this point. Focus on setting the scene for resumption.`;
+
+    try {
+      const response = await genAI.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+      setSummaryText(response.text);
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      setSummaryError("Failed to generate summary. Please try again later.");
+    } finally {
+      setIsSummaryLoading(false);
+    }
   };
 
   if (loading) {
@@ -379,9 +417,10 @@ const SoloWatch = () => {
 
   const year = movie.release_date ? movie.release_date.split("-")[0] : "N/A";
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const resumeProgressPercent = resumeData?.currentTime > 0 && resumeData?.duration > 0 
-    ? (resumeData.currentTime / resumeData.duration) * 100 
-    : 0;
+  const resumeProgressPercent =
+    resumeData?.currentTime > 0 && resumeData?.duration > 0
+      ? (resumeData.currentTime / resumeData.duration) * 100
+      : 0;
 
   return (
     <div className="h-screen bg-black text-white flex flex-col">
@@ -458,7 +497,15 @@ const SoloWatch = () => {
                         />
                       </div>
                     </div>
-
+                    <div className="flex justify-end">
+                        <button
+                    onClick={handleShowSummary}
+                    className="p-2.5 hover:bg-white/10 rounded-lg transition-all hover:scale-110 font-bold hover:cursor-pointer"
+                    title="Show Summary"
+                  >
+                    Summarise
+                  </button>
+                  </div>
                     <div className="flex items-center justify-between gap-4 bg-zinc-800/30 rounded-xl p-4">
                       <div className="flex items-center gap-3">
                         <Play size={18} className="text-purple-400" />
@@ -478,12 +525,13 @@ const SoloWatch = () => {
 
                     {resumeData.lastWatched && (
                       <div className="text-center text-xs text-zinc-500">
-                        Last watched on {new Date(resumeData.lastWatched).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                        Last watched on{" "}
+                        {new Date(resumeData.lastWatched).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </div>
                     )}
@@ -509,6 +557,32 @@ const SoloWatch = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Modal */}
+      {showSummaryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <button
+              onClick={() => setShowSummaryModal(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Summary for {movie.title}</h2>
+            <p className="text-sm text-zinc-400 mb-4">
+              Stopped at: {formatTime(movie.runtime * 60 * (currentTime / duration))}
+            </p>
+            {isSummaryLoading && (
+              <div className="flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                <span className="ml-2">Loading summary...</span>
+              </div>
+            )}
+            {summaryError && <p className="text-red-400">{summaryError}</p>}
+            {summaryText && <p className="text-sm text-zinc-200">{summaryText}</p>}
           </div>
         </div>
       )}
@@ -550,10 +624,10 @@ const SoloWatch = () => {
 
       {/* Video Player Container */}
       <div className="flex-1 flex items-center justify-center bg-black p-4">
-        <div 
+        <div
           ref={playerContainerRef}
           className="relative w-full max-w-6xl"
-          style={{ aspectRatio: '16/9' }}
+          style={{ aspectRatio: "16/9" }}
           onMouseMove={handleMouseMove}
           onMouseLeave={() => isPlaying && setShowControls(false)}
         >
@@ -627,6 +701,8 @@ const SoloWatch = () => {
                   >
                     <SkipForward size={20} />
                   </button>
+
+                  {/* New Summarize Button */}
 
                   <div className="flex items-center gap-2 group">
                     <button

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.29.1",
     "@tailwindcss/vite": "^4.1.15",
     "framer-motion": "^12.23.24",
     "lodash": "^4.17.21",
