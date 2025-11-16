@@ -9,6 +9,7 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Watchparty from "./pages/Watchparty";
 import PartyRoom from "./pages/Partyroom";
+import Suggestions from "./pages/Suggestions";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Loader from "./components/Loader";
 
@@ -41,6 +42,13 @@ function App() {
         } />
         <Route path={"/signin"} element={<SignIn />} />
         <Route path={"/signup"} element={<SignUp />} />
+        
+        {/* Suggestions Route */}
+        <Route path={"/suggestions"} element={
+          <ProtectedRoute>
+            <Suggestions />
+          </ProtectedRoute>
+        } />
         
         {/* Solo Watch Route */}
         <Route path="/watch/:id" element={

@@ -6,17 +6,34 @@ import http from "http";
 import { Server } from "socket.io";
 import userRouter from "./routes/userRouter.js";
 import partyRouter from "./routes/party.js";
+import recommendationRouter from "./routes/recommendationRouter.js";
+import contentSeeder from "./routes/contentSeeder.js";
+import testRecommendations from "./routes/testRecommendations.js";
+import aiSuggestionsRouter from "./routes/aiSuggestionsRouter.js";
 import WatchParty from "./models/WatchParty.js";
 import { generateOtp } from "./lib/otp-generator.js";
 
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: "*" }));
+
+// CORS configuration - allow frontend origin with credentials
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/api/users", userRouter);
 app.use("/api/party", partyRouter);
+app.use("/api/recommendations", recommendationRouter);
+app.use("/api/content", contentSeeder);
+app.use("/api/test", testRecommendations);
+app.use("/api/ai", aiSuggestionsRouter);
 
 
 const server = http.createServer(app);
@@ -103,7 +120,7 @@ io.on("connection", (socket) => {
 });
 
 mongoose
-  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/movieSync")
+  .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/movieSync")
   .then(() => console.log("MongoDB connected"))
   .catch((e) => console.error("DB error:", e));
 

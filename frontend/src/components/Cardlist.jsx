@@ -11,7 +11,7 @@ const TMDB_TOKEN = import.meta.env.VITE_TMDB_READ_TOKEN //use api key
 
 
 const Cardlist = ({title,category}) => {
-  console.log(title)
+  // Removed console.log for cleaner output
 
 const [data, setData] = useState([]);
 

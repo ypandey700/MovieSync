@@ -98,7 +98,15 @@ const SignUp = () => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send OTP");
+      if (!res.ok) throw new Error(data.error || data.message || "Failed to send OTP");
+
+      // In development, if OTP is returned (for unverified numbers), auto-fill it
+      if (data.otp) {
+        console.log(`🔑 Development OTP: ${data.otp}`);
+        setOtp(data.otp); // Auto-fill the OTP field
+        setError(`Development Mode: OTP auto-filled (Trial account - number not verified)`);
+        setTimeout(() => setError(""), 8000); // Clear after 8 seconds
+      }
 
       setOtpSent(true);
       setSuccess(true);

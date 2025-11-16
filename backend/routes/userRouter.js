@@ -110,19 +110,84 @@ router.post("/sendOtp",async (req,res)=>{
    const account_sid = process.env.TWILIO_ACCOUNT_SID
    const auth_token = process.env.TWILIO_AUTH_TOKEN
    const twilio_phone_number = process.env.TWILIO_PHONE_NUMBER
-  console.log(twilio_phone_number)
+   
+   // Validate Twilio credentials
+   if (!account_sid || !auth_token || !twilio_phone_number) {
+     console.error('Twilio credentials missing:', {
+       hasAccountSid: !!account_sid,
+       hasAuthToken: !!auth_token,
+       hasPhoneNumber: !!twilio_phone_number
+     });
+     return res.status(500).json({ 
+       error: 'SMS service configuration error. Please contact support.' 
+     });
+   }
+
+   console.log('Twilio phone number:', twilio_phone_number);
    const client = new twilio(account_sid, auth_token); 
 
-    await client.messages.create({
-      body: `YOur MovieSync OTP is ${otp}`,
-      from: twilio_phone_number,
-      to: phoneNumber,
-    })
-   console.log(`OTP: ${otp} Send to :   ${phoneNumber}`)
-   res.status(200).json({message: `OTP Send to  ${phoneNumber}`}); 
+   try {
+     await client.messages.create({
+       body: `Your MovieSync OTP is ${otp}`,
+       from: twilio_phone_number,
+       to: phoneNumber,
+     });
+     console.log(`OTP: ${otp} Send to :   ${phoneNumber}`);
+     res.status(200).json({message: `OTP Send to  ${phoneNumber}`}); 
+   } catch (twilioError) {
+     // Handle Twilio-specific errors
+     const errorCode = twilioError?.code;
+     const errorMessage = twilioError?.message || '';
+     
+     // Check if it's an unverified number error (common in trial accounts)
+     if (errorCode === 21211 || errorMessage.toLowerCase().includes('unverified')) {
+       console.error('Twilio unverified number error:', twilioError);
+       console.log(`\n⚠️  DEVELOPMENT MODE: OTP for ${phoneNumber} is ${otp}`);
+       console.log('⚠️  This number needs to be verified in Twilio trial account\n');
+       
+       // In development, we can still return success but log the OTP
+       // In production, you'd want to handle this differently
+       if (process.env.NODE_ENV === 'development') {
+         console.log(`\n🔑 OTP for ${email} (${phoneNumber}): ${otp}\n`);
+         return res.status(200).json({
+           message: `OTP generated. Check console for OTP (Trial account limitation)`,
+           otp: otp // Only in development
+         });
+       }
+       
+       return res.status(400).json({
+         error: 'Phone number not verified. Please verify your number in Twilio or use a verified number for testing.',
+         message: 'Trial account limitation: Unverified numbers cannot receive SMS'
+       });
+     }
+     
+     // Re-throw to be caught by outer catch
+     throw twilioError;
+   }
    } catch (error) {
-    res.status(500).json({message:"Internal Server Error "}); 
-    console.log(error);  
+    console.error('Send OTP error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      stack: error.stack
+    });
+    
+    // Provide user-friendly error messages
+    let userMessage = 'Failed to send OTP. Please try again later.';
+    
+    if (error.code === 21211 || error.message?.toLowerCase().includes('unverified')) {
+      userMessage = 'Phone number not verified. Please verify your number in Twilio or contact support.';
+    } else if (error.code === 21608) {
+      userMessage = 'Invalid phone number format. Please check your phone number.';
+    } else if (error.code === 20003) {
+      userMessage = 'Invalid Twilio credentials. Please contact support.';
+    }
+    
+    res.status(500).json({
+      error: userMessage,
+      message: error.message || 'Internal Server Error'
+    });  
   }
 
 } )
