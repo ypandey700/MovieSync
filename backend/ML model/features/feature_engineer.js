@@ -5,12 +5,12 @@
 
 class FeatureEngineer {
   constructor() {
-    // Genre weights based on user preferences
+    
     this.genreWeights = {};
-    // Actor/director preferences
+    
     this.actorWeights = {};
     this.directorWeights = {};
-    // Platform preferences
+    
     this.platformWeights = {};
   }
 
@@ -27,12 +27,12 @@ class FeatureEngineer {
       // Platform preferences
       platformVector: this._normalizePlatforms(user.preferences?.platforms || []),
       
-      // Watch history statistics
+      
       avgRating: this._calculateAvgRating(user.viewing_history || []),
       totalWatchTime: this._calculateTotalWatchTime(user.viewing_history || []),
       watchFrequency: user.viewing_history?.length || 0,
       
-      // Content preferences from history
+      
       preferredGenres: this._extractPreferredGenres(user.viewing_history || []),
       preferredActors: this._extractPreferredActors(user.viewing_history || []),
       preferredDirectors: this._extractPreferredDirectors(user.viewing_history || []),
