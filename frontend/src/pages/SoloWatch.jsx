@@ -359,28 +359,21 @@ const SoloWatch = () => {
     // Map sample video progress to movie runtime
     const videoDuration = videoRef.current.duration || duration;
     const videoCurrentTime = videoRef.current.currentTime || currentTime;
-    const movieRuntimeSeconds = movie.runtime * 60; // Convert minutes to seconds
+    const movieRuntimeSeconds = movie.runtime * 60; 
     const progressFraction = videoDuration > 0 ? videoCurrentTime / videoDuration : 0;
     const mappedTime = Math.round(progressFraction * movieRuntimeSeconds);
 
-    // Mock summary if no valid API key
-    if (GEMINI_API_KEY === "MOCK_API_KEY") {
-      setTimeout(() => {
-        setSummaryText(
-          `This is a mock summary for "${movie.title}" up to ${formatTime(mappedTime)}. In a real app, Gemini would summarize the movie's plot based on your progress.`
-        );
-        setIsSummaryLoading(false);
-      }, 1500);
-      return;
-    }
 
+    
     // Construct prompt for Gemini
     const prompt = `The user was watching the movie titled "${movie.title}".
     Its description is: "${movie.overview || "No description available."}".
     The total duration of the movie is ${formatTime(movie.runtime * 60)}.
-    The user stopped watching at the ${formatTime(mappedTime)} mark.
+    The user stopped watching at the ${formatTime(resumeData.currentTime)} mark.
     Please provide a concise summary (100-150 words) of the plot that has likely occurred up to this point.
     Do not reveal major spoilers beyond this point. Focus on setting the scene for resumption.`;
+    console.log(prompt); 
+
 
     try {
       const response = await genAI.models.generateContent({
