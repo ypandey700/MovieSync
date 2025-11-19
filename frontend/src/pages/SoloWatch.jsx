@@ -566,7 +566,7 @@ const SoloWatch = () => {
             </button>
             <h2 className="text-2xl font-bold mb-4">Summary for {movie.title}</h2>
             <p className="text-sm text-zinc-400 mb-4">
-              Stopped at: {formatTime(movie.runtime * 60 * (currentTime / duration))}
+              Stopped at: {formatTime(resumeData.currentTime)}
             </p>
             {isSummaryLoading && (
               <div className="flex items-center justify-center">
